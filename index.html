@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GymBro">
+  <meta name="theme-color" content="#0f0f13">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GymBro</title>
+  <style>
+    :root {
+      --bg: #0f0f13; --surface: #1a1a24; --card: #22222f;
+      --accent: #5b9cf6; --accent2: #f97316; --green: #22c55e;
+      --muted: #6b7280; --text: #f1f1f3; --subtext: #9ca3af;
+      --border: #2e2e3e; --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 0 0 80px; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 18px 20px 14px; position: sticky; top: 0; z-index: 10; }
+    header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { font-size: 0.78rem; color: var(--subtext); margin-top: 3px; }
+    .tabs { display: flex; gap: 8px; padding: 14px 16px 0; overflow-x: auto; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-btn { flex-shrink: 0; padding: 8px 16px; border-radius: 50px; border: 1.5px solid var(--border); background: transparent; color: var(--subtext); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .tab-btn.active.day2 { background: var(--accent2); border-color: var(--accent2); }
+
+    /* Progress */
+    .progress-wrap { padding: 10px 16px 4px; }
+    .progress-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .progress-count { font-size: 0.75rem; color: var(--subtext); }
+    .edit-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px; color: var(--subtext); font-size: 0.75rem; font-weight: 600; padding: 4px 11px; cursor: pointer; transition: all 0.15s; }
+    .edit-btn.active { border-color: #ef4444; color: #ef4444; }
+    .progress-bar-bg { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width 0.3s ease; }
+    .progress-bar-fill.day2 { background: var(--accent2); }
+    .progress-bar-fill.done { background: var(--green); }
+
+    /* Edit mode hint */
+    .edit-hint { display: none; font-size: 0.72rem; color: #ef4444; text-align: center; padding: 6px 16px 2px; }
+    .edit-active .edit-hint { display: block; }
+
+    /* Sections */
+    .section { padding: 14px 16px 4px; }
+    .section-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+    /* Exercise cards */
+    .exercise-card { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 14px; cursor: pointer; transition: border-color 0.15s; user-select: none; -webkit-tap-highlight-color: transparent; position: relative; }
+    .exercise-card.checked { border-color: var(--green); background: rgba(34,197,94,0.07); }
+    .check-circle { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .exercise-card.checked .check-circle { background: var(--green); border-color: var(--green); }
+    .check-circle svg { opacity: 0; transition: opacity 0.15s; }
+    .exercise-card.checked .check-circle svg { opacity: 1; }
+    .exercise-info { flex: 1; min-width: 0; }
+    .exercise-name { font-size: 0.93rem; font-weight: 600; line-height: 1.3; }
+    .exercise-card.checked .exercise-name { text-decoration: line-through; color: var(--muted); }
+    .exercise-meta { font-size: 0.78rem; color: var(--subtext); margin-top: 3px; }
+    .exercise-tip { font-size: 0.73rem; color: var(--muted); margin-top: 4px; font-style: italic; }
+    .tag { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; flex-shrink: 0; transition: opacity 0.15s; }
+    .tag-strength { background: rgba(91,156,246,0.18); color: var(--accent); }
+    .tag-core { background: rgba(249,115,22,0.15); color: var(--accent2); }
+    .tag-power { background: rgba(168,85,247,0.15); color: #c084fc; }
+    .tag-plyo { background: rgba(34,197,94,0.15); color: var(--green); }
+    .tag-injury { background: rgba(251,191,36,0.15); color: #fbbf24; }
+    .tag-upper { background: rgba(236,72,153,0.15); color: #f472b6; }
+
+    /* Remove button (edit mode) */
+    .remove-ex-btn { display: none; position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 50%; border: none; background: #ef4444; color: white; font-size: 15px; line-height: 1; cursor: pointer; align-items: center; justify-content: center; z-index: 3; flex-shrink: 0; }
+    .edit-active .exercise-card .remove-ex-btn { display: flex; }
+    .edit-active .exercise-card .tag { opacity: 0; }
+    .edit-active .exercise-card { cursor: default; }
+    .edit-active .exercise-card .check-circle { opacity: 0.3; }
+
+    /* Add exercise button */
+    .add-ex-btn { display: none; width: calc(100% - 32px); margin: 4px 16px 10px; padding: 11px; border-radius: var(--radius); border: 1.5px dashed var(--border); background: transparent; color: var(--muted); font-size: 0.82rem; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s; }
+    .add-ex-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .edit-active .add-ex-btn { display: block; }
+
+    /* Restore button */
+    .restore-btn { display: none; width: calc(100% - 32px); margin: 0 16px 10px; padding: 9px; border-radius: var(--radius); border: 1.5px solid #ef444433; background: transparent; color: #ef4444; font-size: 0.78rem; font-weight: 600; cursor: pointer; text-align: center; }
+    .edit-active .restore-btn { display: block; }
+
+    /* Custom added exercises */
+    .custom-section { padding: 0 16px; }
+    .custom-section-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); margin-bottom: 10px; padding-top: 14px; display: flex; align-items: center; gap: 6px; }
+    .custom-section-label::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+    /* Complete banner */
+    .complete-banner { display: none; margin: 10px 16px; background: rgba(34,197,94,0.1); border: 1.5px solid var(--green); border-radius: var(--radius); padding: 13px 16px; text-align: center; color: var(--green); font-weight: 700; font-size: 0.92rem; }
+    .complete-banner.show { display: block; }
+
+    /* Reset */
+    .reset-btn { display: block; margin: 12px 16px 0; width: calc(100% - 32px); padding: 12px; border-radius: var(--radius); border: 1.5px solid var(--border); background: transparent; color: var(--subtext); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .reset-btn:hover { border-color: var(--muted); color: var(--text); }
+    .footnote { font-size: 0.72rem; color: var(--muted); padding: 10px 16px 0; text-align: center; }
+
+    /* Demo */
+    .demo-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid #2e2e3e; border-radius: 6px; color: #6b7280; font-size: 0.68rem; font-weight: 600; padding: 3px 8px; cursor: pointer; margin-top: 7px; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+    .demo-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Info boxes */
+    .info-box { margin: 0 16px 8px; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 12px 14px; }
+    .info-box p { font-size: 0.78rem; color: var(--subtext); line-height: 1.5; }
+    .info-box strong { color: var(--text); }
+
+    /* Day panel */
+    .day-panel { display: none; }
+    .day-panel.active { display: block; }
+
+    /* ===== MODAL ===== */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 100; }
+    .modal-overlay.open { display: block; }
+    .modal-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 18px 18px 0 0; z-index: 101; max-height: 82vh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); border-top: 1px solid var(--border); }
+    .modal-sheet.open { transform: translateY(0); }
+    .modal-handle { width: 36px; height: 4px; background: #3a3a4a; border-radius: 99px; margin: 12px auto 0; flex-shrink: 0; }
+    .modal-head { padding: 12px 20px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .modal-head h3 { font-size: 0.95rem; font-weight: 700; }
+    .modal-head span { font-size: 0.75rem; color: var(--subtext); }
+    .modal-close { background: none; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; line-height: 1; padding: 2px 4px; }
+    .modal-search { padding: 10px 16px 6px; flex-shrink: 0; }
+    .modal-search input { width: 100%; background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 14px; color: var(--text); font-size: 0.85rem; outline: none; }
+    .modal-search input::placeholder { color: var(--muted); }
+    .modal-search input:focus { border-color: var(--accent); }
+    .modal-body { overflow-y: auto; padding: 0 16px 30px; flex: 1; -webkit-overflow-scrolling: touch; }
+    .lib-cat { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 14px 0 8px; }
+    .lib-item { display: flex; align-items: flex-start; padding: 10px 12px; background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; margin-bottom: 6px; gap: 12px; }
+    .lib-item.hidden { display: none; }
+    .lib-item-info { flex: 1; min-width: 0; }
+    .lib-item-name { font-size: 0.87rem; font-weight: 600; }
+    .lib-item-meta { font-size: 0.74rem; color: var(--subtext); margin-top: 2px; }
+    .lib-item-tip { font-size: 0.72rem; color: var(--muted); margin-top: 3px; font-style: italic; }
+    .lib-add-btn { flex-shrink: 0; background: var(--accent); border: none; border-radius: 8px; color: white; font-size: 0.75rem; font-weight: 700; padding: 6px 12px; cursor: pointer; margin-top: 2px; white-space: nowrap; }
+    .lib-add-btn.added { background: var(--muted); cursor: default; }
+    .lib-cat-wrap.all-hidden .lib-cat { display: none; }
+
+    /* ===== GYMBRO HEADER ===== */
+    .brand-row { display: flex; align-items: center; gap: 12px; }
+    .brand-logo { flex-shrink: 0; }
+    .brand-name { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.04em; background: linear-gradient(135deg, #5b9cf6 0%, #f97316 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.1; }
+    .brand-sub { font-size: 0.75rem; color: var(--subtext); margin-top: 1px; }
+
+    /* ===== SWAP BUTTON ===== */
+    .swap-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid rgba(249,115,22,0.35); border-radius: 6px; color: #f97316; font-size: 0.68rem; font-weight: 700; padding: 3px 9px; cursor: pointer; margin-top: 5px; margin-left: 6px; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+    .swap-btn:active { background: rgba(249,115,22,0.12); }
+    .edit-active .swap-btn { display: none; }
+
+    /* ===== SWAPPED CARD STATE ===== */
+    .exercise-card.swapped { border-color: rgba(249,115,22,0.55); background: rgba(249,115,22,0.06); }
+    .swap-badge { display: inline-block; background: rgba(249,115,22,0.2); color: #f97316; font-size: 0.58rem; font-weight: 800; letter-spacing: 0.07em; padding: 2px 6px; border-radius: 4px; margin-left: 7px; vertical-align: middle; text-transform: uppercase; }
+    .swap-reason-tip { font-size: 0.72rem; color: #f97316; margin-top: 4px; font-style: italic; }
+    .swap-restore-btn { display: inline-flex; align-items: center; gap: 3px; background: none; border: none; color: var(--muted); font-size: 0.7rem; cursor: pointer; margin-top: 3px; padding: 0; text-decoration: underline; }
+    .swap-restore-btn:hover { color: #f97316; }
+
+    /* ===== SWAP MODAL ===== */
+    .swap-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; }
+    .swap-overlay.open { display: block; }
+    .swap-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 18px 18px 0 0; z-index: 201; max-height: 78vh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); border-top: 1px solid var(--border); }
+    .swap-sheet.open { transform: translateY(0); }
+    .swap-handle { width: 36px; height: 4px; background: #3a3a4a; border-radius: 99px; margin: 12px auto 0; flex-shrink: 0; }
+    .swap-head { padding: 14px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-start; }
+    .swap-head-inner h3 { font-size: 0.97rem; font-weight: 700; }
+    .swap-head-inner p { font-size: 0.74rem; color: var(--subtext); margin-top: 3px; }
+    .swap-close-btn { background: none; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; padding: 2px 4px; line-height: 1; }
+    .swap-body { overflow-y: auto; flex: 1; padding: 16px 16px 32px; -webkit-overflow-scrolling: touch; }
+    .feeling-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    .feeling-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .feeling-pill { padding: 9px 15px; border-radius: 50px; border: 1.5px solid var(--border); background: transparent; color: var(--subtext); font-size: 0.83rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .feeling-pill.active { border-color: #f97316; color: #f97316; background: rgba(249,115,22,0.1); }
+    .swap-alts { display: none; }
+    .swap-alts.show { display: block; }
+    .swap-alts-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    .swap-alt-card { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 13px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .swap-alt-info { flex: 1; min-width: 0; }
+    .swap-alt-name { font-size: 0.9rem; font-weight: 700; }
+    .swap-alt-meta { font-size: 0.74rem; color: var(--subtext); margin-top: 2px; }
+    .swap-alt-reason { font-size: 0.72rem; color: #f97316; margin-top: 4px; font-style: italic; line-height: 1.4; }
+    .swap-in-btn { flex-shrink: 0; background: #f97316; border: none; border-radius: 8px; color: white; font-size: 0.75rem; font-weight: 700; padding: 9px 13px; cursor: pointer; white-space: nowrap; }
+    .swap-in-btn:active { opacity: 0.8; }
+    .swap-empty { color: var(--muted); font-size: 0.83rem; text-align: center; padding: 24px 0; }
+
+    /* ===== DEMO MODAL ===== */
+    .demo-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:300; }
+    .demo-overlay.open { display:block; }
+    .demo-sheet { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-radius:18px 18px 0 0; z-index:301; max-height:90vh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); border-top:1px solid var(--border); }
+    .demo-sheet.open { transform:translateY(0); }
+    .demo-handle { width:36px; height:4px; background:#3a3a4a; border-radius:99px; margin:12px auto 0; flex-shrink:0; }
+    .demo-dhead { display:flex; justify-content:space-between; align-items:center; padding:12px 20px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .demo-dhead h3 { font-size:0.97rem; font-weight:700; }
+    .demo-dhead button { background:none; border:none; color:var(--muted); font-size:1.3rem; cursor:pointer; line-height:1; padding:2px 4px; }
+    .demo-tabs { display:flex; padding:0 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .d-tab { flex:1; padding:10px 4px; background:none; border:none; border-bottom:2px solid transparent; color:var(--subtext); font-size:0.81rem; font-weight:600; cursor:pointer; transition:all 0.15s; }
+    .d-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .demo-body { overflow-y:auto; flex:1; -webkit-overflow-scrolling:touch; }
+    .d-panel { display:none; padding:16px 16px 32px; }
+    .d-panel.active { display:block; }
+    /* Animation panel */
+    .demo-anim-wrap { display:flex; justify-content:center; padding:4px 0 8px; }
+    .demo-anim-wrap svg { width:100%; max-width:280px; height:auto; border-radius:12px; }
+    .demo-anim-caption { text-align:center; font-size:0.74rem; color:var(--muted); margin-top:6px; }
+    /* Muscles panel */
+    .demo-map-wrap { display:flex; justify-content:center; padding:4px 0 8px; }
+    .demo-map-wrap svg { width:100%; max-width:300px; height:auto; }
+    .muscle-section-label { font-size:0.7rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin:10px 0 6px; }
+    .muscle-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+    .m-chip { padding:4px 11px; border-radius:50px; font-size:0.74rem; font-weight:600; }
+    .m-chip.primary { background:rgba(239,68,68,0.15); color:#f87171; }
+    .m-chip.secondary { background:rgba(255,255,255,0.07); color:var(--subtext); }
+    /* How To panel */
+    .demo-desc { font-size:0.84rem; line-height:1.7; color:var(--subtext); margin-bottom:14px; }
+    .demo-cue { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }
+    .demo-cue-dot { width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:5px; }
+    .demo-cue span { font-size:0.83rem; line-height:1.5; color:var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand-row">
+    <div class="brand-logo">
+      <svg width="44" height="28" viewBox="0 0 44 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer left plates -->
+        <rect x="0" y="7" width="5" height="14" rx="2" fill="#5b9cf6" opacity="0.55"/>
+        <!-- Inner left plates -->
+        <rect x="5" y="3" width="6" height="22" rx="2.5" fill="#5b9cf6"/>
+        <!-- Bar -->
+        <rect x="11" y="11" width="22" height="6" rx="3" fill="#7ab8ff"/>
+        <!-- Centre grip highlight -->
+        <rect x="16" y="10" width="12" height="8" rx="3" fill="#f97316"/>
+        <!-- Inner right plates -->
+        <rect x="33" y="3" width="6" height="22" rx="2.5" fill="#5b9cf6"/>
+        <!-- Outer right plates -->
+        <rect x="39" y="7" width="5" height="14" rx="2" fill="#5b9cf6" opacity="0.55"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">GymBro</div>
+      <div class="brand-sub">Run &amp; Ride · 2× per week · Built for high load</div>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('day1',this)">Day A — Strength</button>
+  <button class="tab-btn day2" onclick="switchTab('day2',this)">Day B — Power</button>
+  <button class="tab-btn" onclick="switchTab('plan',this)">📋 Notes</button>
+</div>
+
+
+<!-- =========== DAY A =========== -->
+<div id="day1" class="day-panel active">
+  <div class="progress-wrap">
+    <div class="progress-row">
+      <span class="progress-count" id="day1-count">0 / — exercises</span>
+      <button class="edit-btn" id="edit-btn-day1" onclick="toggleEdit('day1')">✏️ Edit</button>
+    </div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="day1-bar" style="width:0%"></div></div>
+  </div>
+  <div class="edit-hint">Tap ✕ to remove an exercise · tap "+ Add" to add new ones</div>
+  <div class="complete-banner" id="day1-complete">🎉 Day A complete! Great work.</div>
+
+  <div class="section">
+    <div class="section-title">Warm-Up</div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="bike-warmup">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">5 min Bike or Row Erg</div>
+        <div class="exercise-meta">Easy pace — get blood moving</div>
+      </div>
+      <span class="tag tag-strength">Warm-up</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','bike-warmup')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="hip-circles">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Hip Circles + Leg Swings</div>
+        <div class="exercise-meta">10 reps each direction · no weight</div>
+        <div class="exercise-tip">Loosen the hips before loading them</div>
+      </div>
+      <span class="tag tag-strength">Warm-up</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','hip-circles')">✕</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">⚡ Plyometric — Do First, When Fresh</div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="jump-squats">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Jump Squats</div>
+        <div class="exercise-meta">3 sets × 5 reps · Rest 90 sec · full effort each rep</div>
+        <div class="exercise-tip">Develops explosive stretch-shortening cycle — directly improves running economy</div>
+      </div>
+      <span class="tag tag-plyo">Plyo</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','jump-squats')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="depth-drops">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Depth Drops ★</div>
+        <div class="exercise-meta">3 sets × 5 reps · Rest 90 sec · step off, land quietly — no rebound</div>
+        <div class="exercise-tip">Best evidence-based exercise for reducing ACL and knee injury risk — trains landing mechanics under load</div>
+      </div>
+      <span class="tag tag-injury">Injury Prev.</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','depth-drops')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="sl-pogo-hops">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Single-Leg Pogo Hops ★</div>
+        <div class="exercise-meta">3 sets × 15 each leg · Rest 60 sec · stiff ankle, minimal knee bend</div>
+        <div class="exercise-tip">Gold standard for Achilles tendinopathy prevention in runners — loads the tendon exactly as each running stride does</div>
+      </div>
+      <span class="tag tag-injury">Injury Prev.</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','sl-pogo-hops')">✕</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Main Strength Work</div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="back-squat">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Barbell Back Squat</div>
+        <div class="exercise-meta">4 sets × 6–8 reps · Rest 2–3 min</div>
+        <div class="exercise-tip">Quad &amp; glute power — foundation for running uphill and cycling climbs</div>
+      </div>
+      <span class="tag tag-strength">Strength</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','back-squat')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="rdl">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Romanian Deadlift</div>
+        <div class="exercise-meta">3 sets × 10 reps · Rest 90 sec</div>
+        <div class="exercise-tip">Hamstring &amp; glute strength — key for running economy and injury prevention</div>
+      </div>
+      <span class="tag tag-strength">Strength</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','rdl')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="nordic-curl">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Nordic Hamstring Curl ★</div>
+        <div class="exercise-meta">3 sets × 4–6 reps · Rest 2 min · slow down (3–5 sec)</div>
+        <div class="exercise-tip">Reduces hamstring strains by ~50% in runners. Lower slowly, use hands to push back up — the eccentric is what matters</div>
+      </div>
+      <span class="tag tag-injury">Injury Prev.</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','nordic-curl')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="split-squat">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Bulgarian Split Squat</div>
+        <div class="exercise-meta">3 sets × 8 reps each leg · Rest 90 sec</div>
+        <div class="exercise-tip">Single-leg strength — fixes left/right imbalances that cause running injuries</div>
+      </div>
+      <span class="tag tag-strength">Strength</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','split-squat')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="hip-thrust">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Hip Thrust</div>
+        <div class="exercise-meta">3 sets × 12 reps · Rest 90 sec</div>
+        <div class="exercise-tip">Max glute activation — directly improves running push-off and cycling power</div>
+      </div>
+      <span class="tag tag-strength">Strength</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','hip-thrust')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="eccentric-calf">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Eccentric Calf Raise (off a step) ★</div>
+        <div class="exercise-meta">3 sets × 12 reps · Rise 2 feet, lower 1 · 3 sec down</div>
+        <div class="exercise-tip">Eccentric loading is the specific Achilles stimulus under high run load</div>
+      </div>
+      <span class="tag tag-injury">Injury Prev.</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','eccentric-calf')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="tibialis-raise">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Tibialis Raise ★</div>
+        <div class="exercise-meta">3 sets × 20 reps · Heels on floor, toes lift · Rest 45 sec</div>
+        <div class="exercise-tip">Strengthens the tibialis anterior — the #1 overlooked muscle for shin splint prevention</div>
+      </div>
+      <span class="tag tag-injury">Injury Prev.</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','tibialis-raise')">✕</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Core Circuit — 3 Rounds</div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="plank">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Plank</div>
+        <div class="exercise-meta">45 seconds hold · 3 rounds</div>
+        <div class="exercise-tip">Anti-extension core stability — brace hard, keep hips level</div>
+      </div>
+      <span class="tag tag-core">Core</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','plank')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="dead-bug">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Dead Bug</div>
+        <div class="exercise-meta">10 reps each side · 3 rounds</div>
+        <div class="exercise-tip">Trains core to resist rotation — great for running gait control</div>
+      </div>
+      <span class="tag tag-core">Core</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','dead-bug')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="pallof-press">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Pallof Press</div>
+        <div class="exercise-meta">10 reps each side · 3 rounds · cable or band</div>
+        <div class="exercise-tip">Anti-rotation — the most underrated core exercise for endurance athletes</div>
+      </div>
+      <span class="tag tag-core">Core</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','pallof-press')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day1" data-id="copenhagen-plank">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Copenhagen Plank ★</div>
+        <div class="exercise-meta">20 sec each side · 3 rounds · top leg on bench</div>
+        <div class="exercise-tip">Adductor &amp; groin strength — prevents hip drop and groin strains in high-mileage runners</div>
+      </div>
+      <span class="tag tag-injury">Injury Prev.</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day1','copenhagen-plank')">✕</button>
+    </div>
+  </div>
+
+  <!-- Custom exercises injected here -->
+  <div class="custom-section" id="custom-day1"></div>
+
+  <button class="add-ex-btn" onclick="openModal('day1')">+ Add Exercise to Day A</button>
+  <button class="restore-btn" onclick="restoreDefaults('day1')">↺ Restore removed exercises</button>
+
+  <div class="complete-banner" id="day1-complete2" style="display:none"></div>
+  <button class="reset-btn" onclick="resetDay('day1')">↺ Reset all checkboxes</button>
+  <p class="footnote">Tap to check off · ✏️ Edit to add or remove · ★ = high-load additions</p>
+</div>
+
+
+<!-- =========== DAY B =========== -->
+<div id="day2" class="day-panel">
+  <div class="progress-wrap">
+    <div class="progress-row">
+      <span class="progress-count" id="day2-count">0 / — exercises</span>
+      <button class="edit-btn" id="edit-btn-day2" onclick="toggleEdit('day2')">✏️ Edit</button>
+    </div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill day2" id="day2-bar" style="width:0%"></div></div>
+  </div>
+  <div class="edit-hint">Tap ✕ to remove an exercise · tap "+ Add" to add new ones</div>
+  <div class="complete-banner" id="day2-complete">🎉 Day B complete! Strong session.</div>
+
+  <div class="section">
+    <div class="section-title">Warm-Up</div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="bike-b">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">5 min Bike or Row Erg</div>
+        <div class="exercise-meta">Easy pace — get blood moving</div>
+      </div>
+      <span class="tag tag-power">Warm-up</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','bike-b')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="glute-bridge-act">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Glute Bridge Activation</div>
+        <div class="exercise-meta">2 × 15 reps · bodyweight</div>
+        <div class="exercise-tip">Wake up the glutes before heavy lifts</div>
+      </div>
+      <span class="tag tag-power">Warm-up</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','glute-bridge-act')">✕</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">⚡ Plyometric — Do First, When Fresh</div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="box-jumps">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Box Jumps</div>
+        <div class="exercise-meta">3 sets × 5 reps · Rest 90 sec · soft landing, step down</div>
+        <div class="exercise-tip">Develops peak power and reactive stiffness — translates to faster running cadence</div>
+      </div>
+      <span class="tag tag-plyo">Plyo</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','box-jumps')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="single-leg-hops">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Single-Leg Hops</div>
+        <div class="exercise-meta">3 sets × 6 each leg · Rest 90 sec · land and hold 1 sec</div>
+        <div class="exercise-tip">Most running-specific plyo — builds single-leg impact tolerance and balance</div>
+      </div>
+      <span class="tag tag-plyo">Plyo</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','single-leg-hops')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="lateral-bounds">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Lateral Bounds</div>
+        <div class="exercise-meta">3 sets × 8 each side · Rest 90 sec · stick the landing</div>
+        <div class="exercise-tip">Lateral hip power and stability — essential for trail running and cornering</div>
+      </div>
+      <span class="tag tag-plyo">Plyo</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','lateral-bounds')">✕</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Main Power Work</div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="trap-bar-dl">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Trap Bar Deadlift (or Conventional)</div>
+        <div class="exercise-meta">4 sets × 5 reps · Rest 2–3 min</div>
+        <div class="exercise-tip">Full-body power — improves running force production and cycling torque</div>
+      </div>
+      <span class="tag tag-power">Power</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','trap-bar-dl')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="step-up">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Box Step-Up with Knee Drive</div>
+        <div class="exercise-meta">3 sets × 10 reps each leg · Rest 90 sec</div>
+        <div class="exercise-tip">Mimics the running stride — drive the knee up explosively at the top</div>
+      </div>
+      <span class="tag tag-power">Power</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','step-up')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="sl-rdl">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Single Leg Romanian Deadlift</div>
+        <div class="exercise-meta">3 sets × 8 reps each leg · Rest 90 sec</div>
+        <div class="exercise-tip">Balance + posterior chain — fixes running asymmetries that lead to injury</div>
+      </div>
+      <span class="tag tag-power">Power</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','sl-rdl')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="leg-press">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Leg Press</div>
+        <div class="exercise-meta">3 sets × 12 reps · Rest 90 sec</div>
+        <div class="exercise-tip">Volume quad work — fatigue resistance for long rides</div>
+      </div>
+      <span class="tag tag-power">Power</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','leg-press')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="hip-abduction">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Hip Abduction — Cable or Band ★</div>
+        <div class="exercise-meta">3 sets × 15 reps each leg · Rest 60 sec</div>
+        <div class="exercise-tip">Glute med — prevents hip drop and IT band issues under heavy mileage</div>
+      </div>
+      <span class="tag tag-injury">Injury Prev.</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','hip-abduction')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="seated-row">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Seated Cable Row</div>
+        <div class="exercise-meta">3 sets × 12 reps · Rest 60 sec</div>
+        <div class="exercise-tip">Upper back posture for cycling — prevents hunched-over fatigue on long rides</div>
+      </div>
+      <span class="tag tag-power">Power</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','seated-row')">✕</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Core Circuit — 3 Rounds</div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="hollow-body">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Hollow Body Hold</div>
+        <div class="exercise-meta">30 seconds · 3 rounds</div>
+        <div class="exercise-tip">Full anterior chain tension — foundation of a powerful core</div>
+      </div>
+      <span class="tag tag-core">Core</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','hollow-body')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="bicycle-crunches">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Bicycle Crunches</div>
+        <div class="exercise-meta">20 reps slow &amp; controlled · 3 rounds</div>
+        <div class="exercise-tip">Rotational core — slow it down, don't rush</div>
+      </div>
+      <span class="tag tag-core">Core</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','bicycle-crunches')">✕</button>
+    </div>
+
+    <div class="exercise-card" onclick="toggle(this)" data-day="day2" data-id="russian-twist">
+      <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="exercise-info">
+        <div class="exercise-name">Russian Twist</div>
+        <div class="exercise-meta">20 reps · 3 rounds · add weight when easy</div>
+        <div class="exercise-tip">Obliques &amp; rotation — stabilises torso during arm swing when running</div>
+      </div>
+      <span class="tag tag-core">Core</span>
+      <button class="remove-ex-btn" onclick="removeExercise(event,this.parentElement,'day2','russian-twist')">✕</button>
+    </div>
+  </div>
+
+  <div class="custom-section" id="custom-day2"></div>
+
+  <button class="add-ex-btn" onclick="openModal('day2')">+ Add Exercise to Day B</button>
+  <button class="restore-btn" onclick="restoreDefaults('day2')">↺ Restore removed exercises</button>
+
+  <button class="reset-btn" onclick="resetDay('day2')">↺ Reset all checkboxes</button>
+  <p class="footnote">Tap to check off · ✏️ Edit to add or remove · ★ = high-load additions</p>
+</div>
+
+
+<!-- =========== NOTES =========== -->
+<div id="plan" class="day-panel">
+  <div class="section">
+    <div class="section-title">Managing High Run Load</div>
+    <div class="info-box" style="margin:0 0 8px">
+      <p><strong>Heavy run weeks:</strong> Drop main lift sets from 4 to 3. Skip plyometrics if legs feel dead. Always keep the core and injury-prevention work — low fatigue, high value.</p>
+    </div>
+    <div class="info-box" style="margin:0 0 8px">
+      <p><strong>After hard runs:</strong> 48 hours minimum between hard efforts. Schedule gym on easy run days.</p>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Progression</div>
+    <div class="info-box" style="margin:0 0 8px">
+      <p>Add <strong>2.5–5 kg</strong> to main lifts weekly while form holds. For plyometrics, improve height and landing quality before adding box height. Deload every 6–8 weeks (50% volume for one week).</p>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">★ Key Additions for Runners</div>
+    <div class="info-box" style="margin:0 0 8px"><p><strong>Nordic Hamstring Curl</strong> — Reduces hamstring strains by ~50%. The eccentric loading is the whole point.</p></div>
+    <div class="info-box" style="margin:0 0 8px"><p><strong>Tibialis Raise</strong> — Shin splint insurance. Vastly underused.</p></div>
+    <div class="info-box" style="margin:0 0 8px"><p><strong>Eccentric Calf Raise</strong> — Achilles resilience under load. The slow lowering is the stimulus.</p></div>
+    <div class="info-box" style="margin:0 0 8px"><p><strong>Jump Squats &amp; Box Jumps</strong> — Plyometrics improve running economy 3–8%. Do them fresh.</p></div>
+    <div class="info-box" style="margin:0 0 8px"><p><strong>Hip Abduction</strong> — Prevents IT band syndrome and knee pain from hip drop.</p></div>
+    <div class="info-box" style="margin:0 0 8px"><p><strong>Copenhagen Plank</strong> — Adductor/groin strength. Non-negotiable for high-mileage athletes.</p></div>
+  </div>
+</div>
+
+
+<!-- =========== EXERCISE LIBRARY MODAL =========== -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+<div class="modal-sheet" id="modal-sheet">
+  <div class="modal-handle"></div>
+  <div class="modal-head">
+    <div>
+      <h3>Exercise Library</h3>
+      <span id="modal-day-label">Adding to Day A</span>
+    </div>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+  </div>
+  <div class="modal-search">
+    <input type="text" id="lib-search" placeholder="Search exercises…" oninput="searchLibrary(this.value)"/>
+  </div>
+  <div class="modal-body" id="modal-body"></div>
+</div>
+
+
+<!-- =========== DEMO MODAL =========== -->
+<div class="demo-overlay" id="demo-overlay" onclick="closeDemo()"></div>
+<div class="demo-sheet" id="demo-sheet">
+  <div class="demo-handle"></div>
+  <div class="demo-dhead">
+    <h3 id="demo-title">Exercise Demo</h3>
+    <button onclick="closeDemo()">✕</button>
+  </div>
+  <div class="demo-tabs">
+    <button class="d-tab active" onclick="switchDemoTab(this,'d-anim')">▶ Animation</button>
+    <button class="d-tab" onclick="switchDemoTab(this,'d-muscles')">💪 Muscles</button>
+    <button class="d-tab" onclick="switchDemoTab(this,'d-howto')">📋 How To</button>
+  </div>
+  <div class="demo-body">
+    <div class="d-panel active" id="d-anim">
+      <div class="demo-anim-wrap" id="demo-svg-wrap"></div>
+      <div class="demo-anim-caption" id="demo-caption"></div>
+    </div>
+    <div class="d-panel" id="d-muscles">
+      <div class="demo-map-wrap" id="demo-map-wrap"></div>
+      <div id="demo-muscle-list"></div>
+    </div>
+    <div class="d-panel" id="d-howto">
+      <p class="demo-desc" id="demo-desc"></p>
+      <div id="demo-cues"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =========== SWAP MODAL =========== -->
+<div class="swap-overlay" id="swap-overlay" onclick="closeSwap()"></div>
+<div class="swap-sheet" id="swap-sheet">
+  <div class="swap-handle"></div>
+  <div class="swap-head">
+    <div class="swap-head-inner">
+      <h3 id="swap-title">Swap Exercise</h3>
+      <p>Pick how you're feeling — get a smarter alternative</p>
+    </div>
+    <button class="swap-close-btn" onclick="closeSwap()">✕</button>
+  </div>
+  <div class="swap-body">
+    <div class="feeling-label">How are you feeling today?</div>
+    <div class="feeling-pills">
+      <button class="feeling-pill" onclick="selectCondition(this,'sore-back')">😣 Sore back</button>
+      <button class="feeling-pill" onclick="selectCondition(this,'sore-knees')">🦵 Sore knees</button>
+      <button class="feeling-pill" onclick="selectCondition(this,'tired')">😴 Tired / fatigued</button>
+      <button class="feeling-pill" onclick="selectCondition(this,'tight-hips')">🦷 Tight hips / legs</button>
+    </div>
+    <div class="swap-alts" id="swap-alts">
+      <div class="swap-alts-label">Suggested swaps</div>
+      <div id="swap-alts-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// EXERCISE LIBRARY
+// =============================================
+const LIBRARY = [
+  // Plyometric
+  { id:'pogo-jumps', name:'Pogo Jumps', meta:'3 sets × 20 reps · Rest 60 sec', tip:'Develops reactive stiffness in the calf and Achilles — makes your stride springier', cat:'Plyometric', tag:'plyo' },
+  { id:'lateral-bounds', name:'Lateral Bounds', meta:'3 sets × 8 each side · Rest 90 sec', tip:'Lateral power and stability — great for trail running and agility', cat:'Plyometric', tag:'plyo' },
+  { id:'single-leg-hops', name:'Single Leg Hops', meta:'3 sets × 8 each leg · Rest 90 sec', tip:'Most running-specific plyometric — develops load tolerance under impact', cat:'Plyometric', tag:'plyo' },
+  { id:'depth-jumps', name:'Depth Jumps', meta:'3 sets × 5 reps · Rest 2 min', tip:'Step off box, land and immediately rebound. Advanced — only when strong and fresh', cat:'Plyometric', tag:'plyo' },
+  { id:'jump-rope', name:'Skipping / Jump Rope', meta:'3 sets × 60 sec · Rest 60 sec', tip:'Cadence training and calf conditioning — great for running rhythm', cat:'Plyometric', tag:'plyo' },
+
+  // Lower Body Strength
+  { id:'goblet-squat', name:'Goblet Squat', meta:'3 sets × 12 reps · Rest 90 sec', tip:'Beginner-friendly squat pattern — dumbbell or kettlebell held at chest forces upright torso', cat:'Lower Body', tag:'strength' },
+  { id:'sumo-deadlift', name:'Sumo Deadlift', meta:'4 sets × 6 reps · Rest 2–3 min', tip:'Wide stance targets glutes and adductors more than conventional — great variation', cat:'Lower Body', tag:'strength' },
+  { id:'good-mornings', name:'Good Mornings', meta:'3 sets × 10 reps · Rest 90 sec', tip:'Posterior chain accessory — similar stimulus to RDL but lighter and great for spinal erectors', cat:'Lower Body', tag:'strength' },
+  { id:'reverse-lunge', name:'Reverse Lunge', meta:'3 sets × 10 each leg · Rest 90 sec', tip:'Knee-friendly single-leg work — less shear force than forward lunge', cat:'Lower Body', tag:'strength' },
+  { id:'walking-lunges', name:'Walking Lunges', meta:'3 sets × 12 each leg · Rest 90 sec', tip:'Dynamic single-leg conditioning — adds hip extension component', cat:'Lower Body', tag:'strength' },
+  { id:'lateral-lunge', name:'Lateral Lunge', meta:'3 sets × 8 each side · Rest 90 sec', tip:'Frontal plane strength — great for trail runners and helps prevent knee valgus', cat:'Lower Body', tag:'strength' },
+  { id:'leg-curl', name:'Leg Curl (Machine)', meta:'3 sets × 12 reps · Rest 60 sec', tip:'Hamstring isolation — useful complement to RDL, especially early in training', cat:'Lower Body', tag:'strength' },
+  { id:'leg-extension', name:'Leg Extension (Machine)', meta:'3 sets × 15 reps · Rest 60 sec', tip:'Quad isolation — use as an accessory rather than a primary exercise', cat:'Lower Body', tag:'strength' },
+  { id:'hack-squat', name:'Hack Squat (Machine)', meta:'3 sets × 10 reps · Rest 90 sec', tip:'High quad load without lower back fatigue — good on tired days', cat:'Lower Body', tag:'strength' },
+  { id:'front-squat', name:'Front Squat', meta:'4 sets × 6 reps · Rest 2–3 min', tip:'Upright torso squat — demands strong quads and core. Excellent if you have the mobility', cat:'Lower Body', tag:'strength' },
+
+  // Upper Body
+  { id:'lat-pulldown', name:'Lat Pulldown / Pull-Ups', meta:'3 sets × 10 reps · Rest 90 sec', tip:'Back strength for posture and arm drive — essential for cyclists and distance runners', cat:'Upper Body', tag:'upper' },
+  { id:'face-pulls', name:'Face Pulls', meta:'3 sets × 15 reps · Rest 60 sec', tip:'Rear delt and rotator cuff — counteracts the forward-lean posture from cycling', cat:'Upper Body', tag:'upper' },
+  { id:'db-row', name:'Dumbbell Bent-Over Row', meta:'3 sets × 12 each arm · Rest 60 sec', tip:'Upper back strength — important for upright posture and reducing upper body fatigue on long runs', cat:'Upper Body', tag:'upper' },
+  { id:'push-ups', name:'Push-Ups', meta:'3 sets × 15 reps · Rest 60 sec', tip:'Chest and anterior chain — useful for arm swing strength and general upper body balance', cat:'Upper Body', tag:'upper' },
+  { id:'overhead-press', name:'Overhead Press', meta:'3 sets × 8 reps · Rest 90 sec', tip:'Shoulder stability and core demand — builds the upright strength you need for long runs', cat:'Upper Body', tag:'upper' },
+  { id:'rear-delt-fly', name:'Rear Delt Fly', meta:'3 sets × 15 reps · Rest 60 sec', tip:'Corrects the rounded-shoulder posture that develops from cycling and desk work', cat:'Upper Body', tag:'upper' },
+
+  // Core
+  { id:'side-plank', name:'Side Plank', meta:'3 sets × 30 sec each side', tip:'Lateral core stability — prevents hip hike and Trendelenburg gait in fatigued running', cat:'Core', tag:'core' },
+  { id:'ab-wheel', name:'Ab Wheel Rollout', meta:'3 sets × 8 reps · Rest 60 sec', tip:'Advanced anti-extension — one of the best core strength builders if you can do it with a flat back', cat:'Core', tag:'core' },
+  { id:'bird-dog', name:'Bird Dog', meta:'3 sets × 10 each side · Rest 60 sec', tip:'Core stability with zero spinal load — safe for anyone, great for coordination', cat:'Core', tag:'core' },
+  { id:'hanging-knee-raise', name:'Hanging Knee Raise', meta:'3 sets × 12 reps · Rest 60 sec', tip:'Hip flexor and core combined — also builds grip and shoulder stability', cat:'Core', tag:'core' },
+  { id:'v-ups', name:'V-Ups', meta:'3 sets × 12 reps · Rest 60 sec', tip:'Dynamic core compression — challenging but effective for building anterior chain strength', cat:'Core', tag:'core' },
+  { id:'cable-crunch', name:'Cable Crunch', meta:'3 sets × 15 reps · Rest 60 sec', tip:'Loaded core flexion — the resistance curve makes it more effective than bodyweight crunches', cat:'Core', tag:'core' },
+
+  // Injury Prevention
+  { id:'clamshells', name:'Banded Clamshells', meta:'3 sets × 20 each side · Rest 45 sec', tip:'Glute med isolation — a great warm-up exercise or finisher, very low fatigue', cat:'Injury Prevention', tag:'injury' },
+  { id:'monster-walk', name:'Banded Monster Walk', meta:'3 sets × 20 steps each direction · Rest 60 sec', tip:'Hip abductor conditioning — the band makes every step a glute med rep', cat:'Injury Prevention', tag:'injury' },
+  { id:'hip-flexor-march', name:'Hip Flexor March (Banded)', meta:'3 sets × 12 each leg · Rest 60 sec', tip:'Psoas strength — directly improves stride length and running economy', cat:'Injury Prevention', tag:'injury' },
+  { id:'sl-glute-bridge', name:'Single Leg Glute Bridge', meta:'3 sets × 15 each leg · Rest 60 sec', tip:'Isolated glute work at low load — good on heavy run days as a gentle activation', cat:'Injury Prevention', tag:'injury' },
+  { id:'seated-calf-raise', name:'Seated Calf Raise', meta:'3 sets × 15 reps · Rest 60 sec', tip:'Targets the soleus — the deeper calf muscle that contributes to Achilles stiffness', cat:'Injury Prevention', tag:'injury' },
+  { id:'ankle-hops', name:'Ankle Hops', meta:'3 sets × 20 reps · Rest 60 sec', tip:'Lower leg stiffness and proprioception — tiny hops staying on the balls of your feet', cat:'Injury Prevention', tag:'injury' },
+  { id:'ytw-complex', name:'YTW Shoulder Complex', meta:'2 sets × 10 each position · Rest 45 sec', tip:'Posture for cyclists — Y, T, W positions with light dumbbells, reverses the forward-lean effect', cat:'Injury Prevention', tag:'injury' },
+];
+
+// =============================================
+// STATE — localStorage
+// =============================================
+function getState(day) {
+  try {
+    const s = localStorage.getItem('rr2-' + day);
+    return s ? JSON.parse(s) : { removed: {}, added: [] };
+  } catch(e) { return { removed: {}, added: [] }; }
+}
+function saveState(day, state) {
+  try { localStorage.setItem('rr2-' + day, JSON.stringify(state)); } catch(e) {}
+}
+
+// =============================================
+// TOGGLE CHECK (existing cards)
+// =============================================
+function toggle(card) {
+  if (card.closest('.edit-active')) return; // ignore taps in edit mode
+  card.classList.toggle('checked');
+  updateProgress(card.dataset.day);
+}
+
+// =============================================
+// PROGRESS
+// =============================================
+function updateProgress(day) {
+  const panel = document.getElementById(day);
+  const allCards = panel.querySelectorAll('.exercise-card:not([style*="display: none"]):not([style*="display:none"])');
+  const done = panel.querySelectorAll('.exercise-card.checked:not([style*="display: none"]):not([style*="display:none"])');
+  const total = allCards.length, count = done.length;
+  const pct = total > 0 ? (count / total) * 100 : 0;
+  document.getElementById(day + '-count').textContent = count + ' / ' + total + ' exercises';
+  const bar = document.getElementById(day + '-bar');
+  bar.style.width = pct + '%';
+  const banner = document.getElementById(day + '-complete');
+  if (pct === 100 && total > 0) { bar.classList.add('done'); if(banner) banner.classList.add('show'); }
+  else { bar.classList.remove('done'); if(banner) banner.classList.remove('show'); }
+}
+
+// =============================================
+// RESET CHECKBOXES
+// =============================================
+function resetDay(day) {
+  const panel = document.getElementById(day);
+  panel.querySelectorAll('.exercise-card').forEach(c => c.classList.remove('checked'));
+  updateProgress(day);
+}
+
+// =============================================
+// EDIT MODE
+// =============================================
+function toggleEdit(day) {
+  const panel = document.getElementById(day);
+  const btn = document.getElementById('edit-btn-' + day);
+  const isActive = panel.classList.toggle('edit-active');
+  btn.textContent = isActive ? '✓ Done' : '✏️ Edit';
+  btn.classList.toggle('active', isActive);
+}
+
+// =============================================
+// REMOVE DEFAULT EXERCISE
+// =============================================
+function removeExercise(e, card, day, id) {
+  e.stopPropagation();
+  card.style.display = 'none';
+  const state = getState(day);
+  state.removed[id] = true;
+  saveState(day, state);
+  updateProgress(day);
+}
+
+// =============================================
+// RESTORE DEFAULTS
+// =============================================
+function restoreDefaults(day) {
+  const state = getState(day);
+  state.removed = {};
+  saveState(day, state);
+  // Show all hidden default cards
+  document.querySelectorAll(`#${day} .exercise-card[data-id]`).forEach(card => {
+    card.style.display = '';
+  });
+  updateProgress(day);
+}
+
+// =============================================
+// RENDER CUSTOM (ADDED) EXERCISES
+// =============================================
+function renderCustomSection(day) {
+  const state = getState(day);
+  const container = document.getElementById('custom-' + day);
+  if (!state.added || state.added.length === 0) { container.innerHTML = ''; return; }
+
+  const tagLabels = { strength:'Strength', core:'Core', plyo:'Plyo', injury:'Injury Prev.', upper:'Upper Body' };
+
+  container.innerHTML = `<div class="custom-section-label">Custom Exercises</div>` +
+    state.added.map(ex => `
+      <div class="exercise-card" data-day="${day}" data-custom-id="${ex.id}" onclick="toggleCustom(this)">
+        <div class="check-circle"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="exercise-info">
+          <div class="exercise-name">${ex.name}</div>
+          <div class="exercise-meta">${ex.meta}</div>
+          ${ex.tip ? `<div class="exercise-tip">${ex.tip}</div>` : ''}
+        </div>
+        <span class="tag tag-${ex.tag}">${tagLabels[ex.tag] || ex.cat}</span>
+        <button class="remove-ex-btn" onclick="removeCustomExercise(event,this.parentElement,'${day}','${ex.id}')">✕</button>
+      </div>
+    `).join('');
+}
+
+function toggleCustom(card) {
+  if (card.closest('.edit-active')) return;
+  card.classList.toggle('checked');
+  updateProgress(card.dataset.day);
+}
+
+function removeCustomExercise(e, card, day, id) {
+  e.stopPropagation();
+  const state = getState(day);
+  state.added = state.added.filter(ex => ex.id !== id);
+  saveState(day, state);
+  renderCustomSection(day);
+  updateProgress(day);
+}
+
+// =============================================
+// MODAL
+// =============================================
+let modalDay = null;
+
+function openModal(day) {
+  modalDay = day;
+  document.getElementById('modal-day-label').textContent = day === 'day1' ? 'Adding to Day A' : 'Adding to Day B';
+  document.getElementById('lib-search').value = '';
+  renderLibrary(day);
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('modal-sheet').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('modal-sheet').classList.remove('open');
+}
+
+function renderLibrary(day) {
+  const state = getState(day);
+  const addedIds = new Set((state.added || []).map(e => e.id));
+  const body = document.getElementById('modal-body');
+
+  // Group by category
+  const cats = {};
+  LIBRARY.forEach(ex => { if (!cats[ex.cat]) cats[ex.cat] = []; cats[ex.cat].push(ex); });
+
+  body.innerHTML = Object.entries(cats).map(([cat, exercises]) => `
+    <div class="lib-cat-wrap" id="catwrap-${cat.replace(/\\s/g,'-')}">
+      <div class="lib-cat">${cat}</div>
+      ${exercises.map(ex => `
+        <div class="lib-item" id="lib-${ex.id}">
+          <div class="lib-item-info">
+            <div class="lib-item-name">${ex.name}</div>
+            <div class="lib-item-meta">${ex.meta}</div>
+            ${ex.tip ? `<div class="lib-item-tip">${ex.tip}</div>` : ''}
+          </div>
+          <button class="lib-add-btn ${addedIds.has(ex.id) ? 'added' : ''}"
+            onclick="addExercise('${ex.id}')"
+            ${addedIds.has(ex.id) ? 'disabled' : ''}>
+            ${addedIds.has(ex.id) ? '✓' : '+ Add'}
+          </button>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function addExercise(id) {
+  const ex = LIBRARY.find(e => e.id === id);
+  if (!ex || !modalDay) return;
+  const state = getState(modalDay);
+  if (!state.added) state.added = [];
+  if (!state.added.find(e => e.id === id)) {
+    state.added.push(ex);
+    saveState(modalDay, state);
+    renderCustomSection(modalDay);
+    updateProgress(modalDay);
+  }
+  // Update button
+  const btn = document.querySelector(`#lib-${id} .lib-add-btn`);
+  if (btn) { btn.textContent = '✓'; btn.classList.add('added'); btn.disabled = true; }
+}
+
+function searchLibrary(q) {
+  const query = q.toLowerCase().trim();
+  document.querySelectorAll('.lib-item').forEach(item => {
+    const name = item.querySelector('.lib-item-name').textContent.toLowerCase();
+    item.classList.toggle('hidden', query.length > 0 && !name.includes(query));
+  });
+  // Hide empty category headers
+  document.querySelectorAll('.lib-cat-wrap').forEach(wrap => {
+    const visible = wrap.querySelectorAll('.lib-item:not(.hidden)');
+    wrap.classList.toggle('all-hidden', visible.length === 0);
+  });
+}
+
+// =============================================
+// TABS
+// =============================================
+function switchTab(dayId, btn) {
+  document.querySelectorAll('.day-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(dayId).classList.add('active');
+  btn.classList.add('active');
+}
+
+// =============================================
+// DEMO TOGGLE
+// =============================================
+
+// =============================================
+// INIT
+// =============================================
+function init() {
+  // Inject ▶ Demo buttons for all exercises that have DEMO_DATA
+  Object.keys(DEMO_DATA).forEach(exId => {
+    ['day1','day2'].forEach(day => {
+      const card = document.querySelector(`#${day} .exercise-card[data-id="${exId}"]`);
+      if (!card || card.querySelector('.demo-btn')) return;
+      const info = card.querySelector('.exercise-info');
+      const btn = document.createElement('button');
+      btn.className = 'demo-btn';
+      btn.textContent = '▶ Demo';
+      btn.addEventListener('click', (e) => openDemo(e, exId));
+      // Insert after .exercise-meta
+      const meta = info.querySelector('.exercise-meta');
+      if (meta) { meta.insertAdjacentElement('afterend', btn); }
+      else { info.prepend(btn); }
+    });
+  });
+
+  // Inject swap buttons for all exercises that have substitution data
+  Object.keys(SUBSTITUTIONS).forEach(exId => {
+    ['day1','day2'].forEach(day => {
+      const card = document.querySelector(`#${day} .exercise-card[data-id="${exId}"]`);
+      if (!card || card.querySelector('.swap-btn')) return;
+      const info = card.querySelector('.exercise-info');
+      const btn = document.createElement('button');
+      btn.className = 'swap-btn';
+      btn.textContent = '🔄 Swap';
+      btn.addEventListener('click', (e) => openSwap(e, exId, day));
+      // Insert after demo-btn if present, else after meta
+      const demoBtn = info.querySelector('.demo-btn');
+      if (demoBtn) { demoBtn.insertAdjacentElement('afterend', btn); }
+      else { const meta = info.querySelector('.exercise-meta'); meta.insertAdjacentElement('afterend', btn); }
+    });
+  });
+
+  ['day1','day2'].forEach(day => {
+    const state = getState(day);
+    // Hide removed default exercises
+    Object.keys(state.removed || {}).forEach(id => {
+      const el = document.querySelector(`#${day} .exercise-card[data-id="${id}"]`);
+      if (el) el.style.display = 'none';
+    });
+    // Restore saved swaps
+    Object.entries(state.swapped || {}).forEach(([exId, swapInfo]) => {
+      applySwapToCard(day, exId, swapInfo);
+    });
+    // Render added exercises
+    renderCustomSection(day);
+    updateProgress(day);
+  });
+}
+
+// =============================================
+// MUSCLE MAP BUILDER
+// =============================================
+function buildMuscleMap(fArr, bArr) {
+  const f=(m)=>fArr.includes(m)?'rgba(239,68,68,0.72)':'none';
+  const b=(m)=>bArr.includes(m)?'rgba(239,68,68,0.72)':'none';
+  const s='#252535'; const st='stroke="#2e2e40" stroke-width="0.8"';
+  return `<svg viewBox="0 0 180 185" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:300px;display:block;margin:0 auto">
+  <rect width="180" height="185" fill="#0d0d1a" rx="10"/>
+  <!-- FRONT body -->
+  <g transform="translate(10,8)">
+    <ellipse cx="35" cy="13" rx="12" ry="13" fill="${s}" ${st}/>
+    <rect x="30" y="26" width="10" height="8" fill="${s}"/>
+    <rect x="14" y="33" width="42" height="9" fill="${s}" rx="3" ${st}/>
+    <path d="M17,42 L53,42 L50,98 Q35,103 20,98 Z" fill="${s}" ${st}/>
+    <ellipse cx="23" cy="120" rx="10" ry="22" fill="${s}" ${st}/>
+    <ellipse cx="47" cy="120" rx="10" ry="22" fill="${s}" ${st}/>
+    <ellipse cx="23" cy="153" rx="7" ry="13" fill="${s}" ${st}/>
+    <ellipse cx="47" cy="153" rx="7" ry="13" fill="${s}" ${st}/>
+    <!-- muscles front -->
+    <ellipse cx="35" cy="46" rx="16" ry="8" fill="${f('chest')}"/>
+    <rect x="27" y="57" width="16" height="24" fill="${f('abs')}" rx="2"/>
+    <ellipse cx="35" cy="84" rx="14" ry="8" fill="${f('hip-flexors')}"/>
+    <ellipse cx="23" cy="116" rx="9" ry="18" fill="${f('quads')}"/>
+    <ellipse cx="47" cy="116" rx="9" ry="18" fill="${f('quads')}"/>
+    <ellipse cx="23" cy="96" rx="7" ry="6" fill="${f('adductors')}"/>
+    <ellipse cx="47" cy="96" rx="7" ry="6" fill="${f('adductors')}"/>
+    <ellipse cx="23" cy="152" rx="6" ry="10" fill="${f('calves')}"/>
+    <ellipse cx="47" cy="152" rx="6" ry="10" fill="${f('calves')}"/>
+    <text x="35" y="176" text-anchor="middle" fill="#444" font-size="9" font-family="-apple-system,sans-serif" font-weight="600">FRONT</text>
+  </g>
+  <!-- BACK body -->
+  <g transform="translate(100,8)">
+    <ellipse cx="35" cy="13" rx="12" ry="13" fill="${s}" ${st}/>
+    <rect x="14" y="33" width="42" height="9" fill="${s}" rx="3" ${st}/>
+    <path d="M17,42 L53,42 L50,98 Q35,103 20,98 Z" fill="${s}" ${st}/>
+    <ellipse cx="23" cy="110" rx="13" ry="12" fill="${s}" ${st}/>
+    <ellipse cx="47" cy="110" rx="13" ry="12" fill="${s}" ${st}/>
+    <ellipse cx="23" cy="132" rx="10" ry="22" fill="${s}" ${st}/>
+    <ellipse cx="47" cy="132" rx="10" ry="22" fill="${s}" ${st}/>
+    <ellipse cx="23" cy="158" rx="7" ry="13" fill="${s}" ${st}/>
+    <ellipse cx="47" cy="158" rx="7" ry="13" fill="${s}" ${st}/>
+    <!-- muscles back -->
+    <path d="M20,38 L30,58 L40,58 L50,38 Z" fill="${b('upper-back')}"/>
+    <rect x="27" y="58" width="16" height="18" fill="${b('lower-back')}" rx="2"/>
+    <ellipse cx="25" cy="108" rx="12" ry="10" fill="${b('glutes')}"/>
+    <ellipse cx="45" cy="108" rx="12" ry="10" fill="${b('glutes')}"/>
+    <ellipse cx="23" cy="130" rx="9" ry="18" fill="${b('hamstrings')}"/>
+    <ellipse cx="47" cy="130" rx="9" ry="18" fill="${b('hamstrings')}"/>
+    <ellipse cx="23" cy="156" rx="6" ry="10" fill="${b('calves')}"/>
+    <ellipse cx="47" cy="156" rx="6" ry="10" fill="${b('calves')}"/>
+    <text x="35" y="176" text-anchor="middle" fill="#444" font-size="9" font-family="-apple-system,sans-serif" font-weight="600">BACK</text>
+  </g>
+</svg>`;
+}
+
+// =============================================
+// DEMO DATA
+// =============================================
+const DEMO_DATA = {
+  'back-squat': {
+    caption: 'Side view — watch the knees track out over the toes',
+    primary:['Quadriceps','Glutes'], secondary:['Hamstrings','Core','Spinal Erectors'],
+    front:['quads','hip-flexors'], back:['glutes','hamstrings','lower-back'],
+    desc:'Stand with the bar across your upper traps — not your neck. Feet shoulder-width, toes 10–30° out. Take a big breath into your belly, brace hard, then sit down as if lowering to a chair behind you. Drive knees out over toes throughout. Aim to get your hip crease below your knee at the bottom.',
+    cues:['Bar on upper traps — chest up, proud posture','Push knees out over little toes on the way down','Squat until hip crease is at or below the knee','Drive through the whole foot to stand — don\'t let heels rise'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- back leg --><polyline fill="none" stroke="#9a7858" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="78,102 82,156;78,150 92,160;78,102 82,156" dur="3.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline><polyline fill="none" stroke="#9a7858" stroke-width="6" stroke-linecap="round"><animate attributeName="points" values="82,156 84,201;92,160 88,201;82,156 84,201" dur="3.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- front leg --><polyline fill="none" stroke="#c8a882" stroke-width="9" stroke-linecap="round"><animate attributeName="points" values="78,102 73,156;78,150 36,163;78,102 73,156" dur="3.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline><polyline fill="none" stroke="#c8a882" stroke-width="8" stroke-linecap="round"><animate attributeName="points" values="73,156 70,201;36,163 52,201;73,156 70,201" dur="3.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- knee dot --><circle r="5" fill="#c8a882"><animate attributeName="cx" values="73;36;73" dur="3.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/><animate attributeName="cy" values="156;163;156" dur="3.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>
+<!-- upper body --><g><animateTransform attributeName="transform" type="translate" values="0,0;0,48;0,0" dur="3.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+<rect x="8" y="46" width="144" height="5" fill="#7a7a8a" rx="2"/><rect x="6" y="36" width="8" height="25" fill="#55556a" rx="2"/><rect x="13" y="39" width="5" height="19" fill="#65657a" rx="1"/><rect x="146" y="36" width="8" height="25" fill="#55556a" rx="2"/><rect x="142" y="39" width="5" height="19" fill="#65657a" rx="1"/>
+<line x1="78" y1="98" x2="78" y2="50" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<line x1="78" y1="52" x2="52" y2="55" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="52" y1="55" x2="40" y2="59" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/><line x1="78" y1="52" x2="104" y2="55" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="104" y1="55" x2="116" y2="59" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/>
+<line x1="78" y1="50" x2="78" y2="38" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="78" cy="24" r="14" fill="#c8a882"/><path d="M65,21 Q78,10 91,21" fill="#3a2010"/></g>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">BACK SQUAT · SIDE VIEW</text></svg>`
+  },
+
+  'rdl': {
+    caption: 'Hinge at the hip — bar stays close to the legs throughout',
+    primary:['Hamstrings','Glutes'], secondary:['Lower Back','Core'],
+    front:['hip-flexors'], back:['hamstrings','glutes','lower-back'],
+    desc:'Stand holding a barbell or dumbbells at hip height. Soft bend in the knees throughout — don\'t let them straighten or over-bend. Push your hips back as if closing a car door with your butt, letting the bar slide down your thighs. Hinge until you feel a strong stretch in the hamstrings (usually bar passes the knee), then drive hips forward to return.',
+    cues:['Hips go back first — not down','Keep the bar dragging against your legs the whole way','Flat back throughout — don\'t round the lower back','Feel the stretch in the hamstrings, not a pull in the back'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- legs static --><line x1="72" y1="201" x2="74" y2="155" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/><line x1="74" y1="155" x2="78" y2="103" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><line x1="86" y1="201" x2="84" y2="155" stroke="#9a7858" stroke-width="7" stroke-linecap="round"/><line x1="84" y1="155" x2="78" y2="103" stroke="#9a7858" stroke-width="8" stroke-linecap="round"/>
+<circle cx="74" cy="155" r="4" fill="#c8a882"/><circle cx="84" cy="155" r="3" fill="#9a7858"/><circle cx="78" cy="103" r="5" fill="#c8a882"/>
+<!-- upper body rotates around hip --><g><animateTransform attributeName="transform" type="rotate" values="0,78,102;-52,78,102;0,78,102" dur="3.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+<line x1="78" y1="102" x2="78" y2="52" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<line x1="64" y1="60" x2="60" y2="88" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="92" y1="60" x2="96" y2="88" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="60" y1="88" x2="57" y2="105" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/><line x1="96" y1="88" x2="99" y2="105" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/>
+<rect x="20" y="102" width="120" height="5" fill="#7a7a8a" rx="2"/><rect x="17" y="92" width="7" height="24" fill="#55556a" rx="2"/><rect x="136" y="92" width="7" height="24" fill="#55556a" rx="2"/>
+<line x1="78" y1="52" x2="78" y2="40" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="78" cy="26" r="14" fill="#c8a882"/><path d="M65,23 Q78,12 91,23" fill="#3a2010"/></g>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">ROMANIAN DEADLIFT · SIDE VIEW</text></svg>`
+  },
+
+  'nordic-curl': {
+    caption: 'Control the fall — the slow descent is the whole exercise',
+    primary:['Hamstrings'], secondary:['Glutes','Calves'],
+    front:[], back:['hamstrings','glutes','calves'],
+    desc:'Kneel on the floor with your feet anchored under a bench or partner. Cross arms over chest or hold them out front. From upright kneeling, slowly lower your entire body toward the floor by hinging at the knee — your hip stays straight (don\'t sit back). Use your hands to catch yourself at the bottom. The 3–5 second lowering phase is the stimulus.',
+    cues:['Body is one straight line from knee to head — don\'t sit back','Lower as slowly as possible — 3 to 5 full seconds down','Hands catch you at the bottom, push back to start','If you can\'t do it, use a band to assist the lowering'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/>
+<!-- floor --><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- anchored bench/pad --><rect x="78" y="195" width="52" height="11" fill="#444" rx="3"/>
+<!-- shins (static, on floor) --><line x1="95" y1="205" x2="95" y2="168" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/><line x1="108" y1="205" x2="108" y2="168" stroke="#9a7858" stroke-width="7" stroke-linecap="round"/>
+<!-- upper body rotates forward from knees --><g><animateTransform attributeName="transform" type="rotate" values="0,95,168;-38,95,168;0,95,168" dur="4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.1 0 0.3 1;0.7 0 0.9 1"/>
+<!-- torso --><line x1="95" y1="168" x2="95" y2="118" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<!-- left arm --><line x1="85" y1="128" x2="76" y2="148" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="76" y1="148" x2="72" y2="162" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/>
+<!-- right arm --><line x1="105" y1="128" x2="114" y2="148" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="114" y1="148" x2="118" y2="162" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/>
+<!-- neck --><line x1="95" y1="118" x2="95" y2="106" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/>
+<!-- head --><circle cx="95" cy="92" r="14" fill="#c8a882"/><path d="M82,89 Q95,78 108,89" fill="#3a2010"/></g>
+<!-- hamstring highlight flicker --><rect x="85" y="168" width="10" height="28" fill="rgba(239,68,68,0.35)" rx="3"><animate attributeName="opacity" values="0;0.8;0" keyTimes="0;0.5;0.7" dur="4s" repeatCount="indefinite"/></rect><rect x="96" y="168" width="10" height="28" fill="rgba(239,68,68,0.35)" rx="3"><animate attributeName="opacity" values="0;0.6;0" keyTimes="0;0.5;0.7" dur="4s" repeatCount="indefinite"/></rect>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">NORDIC CURL · SIDE VIEW</text></svg>`
+  },
+
+  'hip-thrust': {
+    caption: 'Drive hips up until thighs are parallel with the floor',
+    primary:['Glutes'], secondary:['Hamstrings','Core','Hip Flexors'],
+    front:['abs'], back:['glutes','hamstrings'],
+    desc:'Sit with your upper back against a bench, barbell across your hips. Feet flat, hip-width, shins roughly vertical at the top. Brace your core and drive your hips up explosively by squeezing your glutes — not by hyperextending your back. At the top, your torso should be parallel to the floor. Hold for a full second at the top.',
+    cues:['Chin tucked — don\'t look up at the ceiling','Squeeze glutes hard at the top and hold 1 second','Shins should be vertical at the top position','Drive through the heels, not the toes'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- bench --><rect x="95" y="118" width="48" height="14" fill="#444" rx="4"/>
+<!-- feet (static) --><ellipse cx="45" cy="202" rx="12" ry="4" fill="#333"/><ellipse cx="60" cy="202" rx="10" ry="4" fill="#2a2a3a"/>
+<!-- shin (static, roughly vertical) --><line x1="52" y1="202" x2="55" y2="163" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/><circle cx="55" cy="163" r="4" fill="#c8a882"/>
+<!-- thigh animates --><polyline fill="none" stroke="#c8a882" stroke-width="9" stroke-linecap="round"><animate attributeName="points" values="55,163 96,180;55,163 96,132;55,163 96,180" dur="3.2s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.4;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- hip dot animates --><circle r="6" fill="#c8a882"><animate attributeName="cx" values="96;96;96" dur="3.2s" repeatCount="indefinite"/><animate attributeName="cy" values="180;132;180" dur="3.2s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.4;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>
+<!-- torso from hip to bench contact --><polyline fill="none" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"><animate attributeName="points" values="96,180 100,122;96,132 100,122;96,180 100,122" dur="3.2s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.4;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- head (stays near bench top) --><circle cx="100" cy="110" r="13" fill="#c8a882"/><path d="M88,108 Q100,97 112,108" fill="#3a2010"/>
+<!-- barbell across hips --><g><animate attributeName="transform" attributeType="XML" type="translate" values="0,0;0,-48;0,0" dur="3.2s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.4;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/><rect x="30" y="177" width="100" height="5" fill="#7a7a8a" rx="2"/><rect x="28" y="167" width="7" height="25" fill="#55556a" rx="2"/><rect x="125" y="167" width="7" height="25" fill="#55556a" rx="2"/></g>
+<!-- glute flash --><ellipse cx="96" cy="163" rx="12" ry="9" fill="rgba(239,68,68,0.4)"><animate attributeName="opacity" values="0;0;0.8;0" keyTimes="0;0.3;0.42;0.6" dur="3.2s" repeatCount="indefinite"/><animate attributeName="cy" values="179;179;131;179" dur="3.2s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0;0.4;1" keySplines="0 0 1 1;0.4 0 0.2 1;0.4 0 0.2 1"/></ellipse>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">HIP THRUST · SIDE VIEW</text></svg>`
+  },
+
+  'split-squat': {
+    caption: 'Front knee tracks over toes — keep torso upright throughout',
+    primary:['Quadriceps','Glutes'], secondary:['Hamstrings','Hip Flexors'],
+    front:['quads','hip-flexors'], back:['glutes','hamstrings'],
+    desc:'Stand a large step in front of a bench, rear foot resting on it. Hold dumbbells at your sides. Lower your body straight down — not forward — until your front thigh is parallel to the floor and the rear knee nearly touches the ground. Keep your torso upright. Drive through the front heel to stand.',
+    cues:['Stay tall — don\'t lean forward','Front knee tracks over your middle toes','Lower straight down, not forward into a lunge','Control the descent over 2–3 seconds'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- bench for rear foot --><rect x="100" y="168" width="44" height="12" fill="#444" rx="3"/>
+<!-- rear foot on bench --><ellipse cx="112" cy="167" rx="10" ry="4" fill="#333"/>
+<!-- rear leg --><polyline fill="none" stroke="#9a7858" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="112,167 104,138 90,108;112,167 112,194 90,150;112,167 104,138 90,108" dur="3.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- front foot --><ellipse cx="52" cy="202" rx="14" ry="4" fill="#333"/>
+<!-- front shin --><polyline fill="none" stroke="#c8a882" stroke-width="8" stroke-linecap="round"><animate attributeName="points" values="52,202 62,155;52,202 70,165;52,202 62,155" dur="3.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- front thigh --><polyline fill="none" stroke="#c8a882" stroke-width="9" stroke-linecap="round"><animate attributeName="points" values="62,155 90,108;70,165 90,150;62,155 90,108" dur="3.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- upper body + dumbbells --><g><animateTransform attributeName="transform" type="translate" values="0,0;0,42;0,0" dur="3.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+<line x1="90" y1="108" x2="90" y2="58" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<!-- dumbbell left --><line x1="76" y1="75" x2="70" y2="105" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><rect x="62" y="100" width="14" height="6" fill="#7a7a8a" rx="2"/>
+<!-- dumbbell right --><line x1="104" y1="75" x2="110" y2="105" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><rect x="106" y="100" width="14" height="6" fill="#7a7a8a" rx="2"/>
+<line x1="90" y1="58" x2="90" y2="46" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="90" cy="32" r="14" fill="#c8a882"/><path d="M77,29 Q90,18 103,29" fill="#3a2010"/></g>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">BULGARIAN SPLIT SQUAT</text></svg>`
+  },
+
+  'trap-bar-dl': {
+    caption: 'Push the floor away — this is a push, not a pull',
+    primary:['Glutes','Quadriceps','Hamstrings'], secondary:['Upper Back','Core'],
+    front:['quads'], back:['glutes','hamstrings','upper-back','lower-back'],
+    desc:'Stand inside the trap bar with handles at your sides. Hinge down and grip, then set your back flat — hips below shoulders, chest up. Take a breath and brace hard. Drive through both feet to push the floor away. The bar should rise in a straight line. Stand tall at the top before lowering with control.',
+    cues:['Set the back first — flat, not rounded','Hips below shoulders at the start','Push the floor away, don\'t pull the bar up','Keep the bar close to your body throughout'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- trap bar outline --><rect x="18" y="196" width="124" height="6" fill="#7a7a8a" rx="2"/><rect x="15" y="186" width="8" height="26" fill="#55556a" rx="2"/><rect x="137" y="186" width="8" height="26" fill="#55556a" rx="2"/>
+<!-- handles (sides of trap bar) --><rect x="18" y="195" width="8" height="9" fill="#888" rx="1"/><rect x="134" y="195" width="8" height="9" fill="#888" rx="1"/>
+<!-- back leg --><polyline fill="none" stroke="#9a7858" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="85,199 84,155 82,102;85,199 84,168 82,134;85,199 84,155 82,102" dur="3.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- front leg --><polyline fill="none" stroke="#c8a882" stroke-width="9" stroke-linecap="round"><animate attributeName="points" values="71,199 73,155 78,102;71,199 73,168 78,134;71,199 73,155 78,102" dur="3.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- torso --><polyline fill="none" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"><animate attributeName="points" values="78,102 84,52;78,134 84,98;78,102 84,52" dur="3.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- arms --><polyline fill="none" stroke="#c8a882" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="78,68 60,100 42,200;78,68 60,100 42,200;78,68 60,100 42,200" dur="3.4s" repeatCount="indefinite"/></polyline><polyline fill="none" stroke="#c8a882" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="84,68 100,100 118,200;84,68 100,100 118,200;84,68 100,100 118,200" dur="3.4s" repeatCount="indefinite"/></polyline>
+<!-- head --><g><animateTransform attributeName="transform" type="translate" values="0,0;0,46;0,0" dur="3.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/><line x1="84" y1="52" x2="84" y2="40" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="84" cy="26" r="14" fill="#c8a882"/><path d="M71,23 Q84,12 97,23" fill="#3a2010"/></g>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">TRAP BAR DEADLIFT · SIDE VIEW</text></svg>`
+  },
+
+  'jump-squats': {
+    caption: 'Land softly with bent knees — absorb through the whole leg',
+    primary:['Quadriceps','Glutes'], secondary:['Calves','Hamstrings'],
+    front:['quads','calves'], back:['glutes','calves'],
+    desc:'Stand feet shoulder-width. Drop into a quarter-to-half squat and explosively jump as high as you can. Reach arms overhead. Land softly with bent knees, absorbing the impact through your entire leg. Reset and repeat. Quality over quantity — full effort on every single rep.',
+    cues:['Swing arms down then up to help the jump','Land toe-ball-heel with bent knees — quiet landing','Full reset between reps — don\'t rush','3–5 reps max per set — full effort each time'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- take-off squat --><g opacity="1"><animate attributeName="opacity" values="1;0.3;0.3;1;1" keyTimes="0;0.2;0.55;0.65;1" dur="3s" repeatCount="indefinite"/><polyline fill="none" stroke="#c8a882" stroke-width="8" stroke-linecap="round" points="75,201 58,168 74,132"/><polyline fill="none" stroke="#9a7858" stroke-width="7" stroke-linecap="round" points="86,201 88,165 84,132"/>
+<line x1="74" y1="132" x2="80" y2="92" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"/>
+<line x1="80" y1="92" x2="62" y2="80" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="80" y1="92" x2="98" y2="80" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="80" y1="92" x2="80" y2="80" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="80" cy="66" r="14" fill="#c8a882"/><path d="M67,63 Q80,52 93,63" fill="#3a2010"/></g>
+<!-- airborne phase --><g opacity="0"><animate attributeName="opacity" values="0;0;1;0.9;0" keyTimes="0;0.2;0.4;0.55;0.65" dur="3s" repeatCount="indefinite"/>
+<polyline fill="none" stroke="#c8a882" stroke-width="8" stroke-linecap="round" points="73,170 68,148 80,120"/>
+<polyline fill="none" stroke="#9a7858" stroke-width="7" stroke-linecap="round" points="87,170 88,148 80,120"/>
+<line x1="80" y1="120" x2="80" y2="72" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"/>
+<line x1="80" y1="85" x2="60" y2="62" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="80" y1="85" x2="100" y2="62" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="80" y1="72" x2="80" y2="60" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="80" cy="46" r="14" fill="#c8a882"/><path d="M67,43 Q80,32 93,43" fill="#3a2010"/>
+<!-- up arrow --><line x1="130" y1="110" x2="130" y2="55" stroke="#22c55e" stroke-width="2" stroke-dasharray="4,2"/><polyline points="126,60 130,52 134,60" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/></g>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">JUMP SQUAT · SIDE VIEW</text></svg>`
+  },
+
+  'box-jumps': {
+    caption: 'Soft landing on the box — step down, don\'t jump down',
+    primary:['Glutes','Quadriceps'], secondary:['Calves','Hamstrings'],
+    front:['quads','calves'], back:['glutes','hamstrings','calves'],
+    desc:'Stand facing a box, feet shoulder-width. Swing your arms back, drop into a quarter squat, then drive explosively upward landing softly on top of the box with both feet. Your knees should be slightly bent on landing. Always step down — never jump down from the box to protect the Achilles and knees.',
+    cues:['Arm swing generates extra power — use it','Land on the box in an athletic position, knees bent','Fully stand up on the box before stepping down','Step down one foot at a time — never jump off'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- box --><rect x="88" y="160" width="55" height="46" fill="#2e3a2e" stroke="#3a4a3a" stroke-width="1.5" rx="3"/>
+<!-- pre-jump figure --><g><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.25;0.35;0.85;1" dur="3.5s" repeatCount="indefinite"/>
+<polyline fill="none" stroke="#c8a882" stroke-width="8" stroke-linecap="round" points="60,201 52,168 65,130"/><polyline fill="none" stroke="#9a7858" stroke-width="7" stroke-linecap="round" points="72,201 75,168 65,130"/>
+<line x1="65" y1="130" x2="65" y2="80" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"/>
+<line x1="65" y1="95" x2="46" y2="112" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="65" y1="95" x2="84" y2="112" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="65" y1="80" x2="65" y2="68" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="65" cy="54" r="14" fill="#c8a882"/><path d="M52,51 Q65,40 78,51" fill="#3a2010"/>
+<!-- arrow to box --><line x1="85" y1="148" x2="108" y2="148" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="3,2"/><polyline points="104,144 110,148 104,152" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/></g>
+<!-- on-box figure --><g><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.35;0.45;0.85;0.95" dur="3.5s" repeatCount="indefinite"/>
+<polyline fill="none" stroke="#c8a882" stroke-width="8" stroke-linecap="round" points="108,160 106,142 114,118"/><polyline fill="none" stroke="#9a7858" stroke-width="7" stroke-linecap="round" points="122,160 124,142 114,118"/>
+<line x1="114" y1="118" x2="114" y2="70" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"/>
+<line x1="114" y1="84" x2="96" y2="75" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="114" y1="84" x2="132" y2="75" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="114" y1="70" x2="114" y2="58" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="114" cy="44" r="14" fill="#c8a882"/><path d="M101,41 Q114,30 127,41" fill="#3a2010"/></g>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">BOX JUMP · SIDE VIEW</text></svg>`
+  },
+
+  'step-up': {
+    caption: 'Drive the knee up high at the top of each rep',
+    primary:['Glutes','Quadriceps'], secondary:['Hamstrings','Hip Flexors'],
+    front:['quads','hip-flexors'], back:['glutes','hamstrings'],
+    desc:'Stand facing a box or bench. Step up with one foot, drive through that heel to stand on the box while lifting your opposite knee up high. Step back down with control. Keep your torso upright throughout — don\'t lean forward to compensate.',
+    cues:['Drive through the heel of your working leg','Bring the opposite knee up high and explosively','Stay tall — don\'t lean over the box','Control the step-down on every rep'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- box --><rect x="72" y="163" width="70" height="43" fill="#2e3a2e" stroke="#3a4a3a" stroke-width="1.5" rx="3"/>
+<!-- trailing leg on floor --><line x1="62" y1="202" x2="74" y2="162" stroke="#9a7858" stroke-width="7" stroke-linecap="round"/>
+<!-- leading leg on box --><polyline fill="none" stroke="#c8a882" stroke-width="9" stroke-linecap="round"><animate attributeName="points" values="90,162 86,135 80,100;90,162 86,135 80,100" dur="3s" repeatCount="indefinite"/></polyline>
+<!-- knee drive leg --><polyline fill="none" stroke="#c8a882" stroke-width="8" stroke-linecap="round"><animate attributeName="points" values="80,100 70,135 62,162;80,100 72,118 78,138;80,100 70,135 62,162" keyTimes="0;0.4;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- upper body + head --><line x1="80" y1="100" x2="80" y2="52" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<line x1="80" y1="65" x2="62" y2="80" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="80" y1="65" x2="98" y2="80" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="80" y1="52" x2="80" y2="40" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="80" cy="26" r="14" fill="#c8a882"/><path d="M67,23 Q80,12 93,23" fill="#3a2010"/>
+<!-- knee highlight --><circle r="7" fill="rgba(34,197,94,0.5)"><animate attributeName="cx" values="70;72;70" keyTimes="0;0.4;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/><animate attributeName="cy" values="135;118;135" keyTimes="0;0.4;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">STEP-UP WITH KNEE DRIVE</text></svg>`
+  },
+
+  'sl-rdl': {
+    caption: 'Keep hips square — resist the rotation as you hinge',
+    primary:['Hamstrings','Glutes'], secondary:['Core','Lower Back'],
+    front:['hip-flexors'], back:['hamstrings','glutes','lower-back'],
+    desc:'Stand on one leg, slight bend in the standing knee. Hold a dumbbell or kettlebell in the opposite hand (or same side for a different stimulus). Hinge at the hip, letting the free leg float back as a counterbalance, reaching the weight toward the floor. Keep your hips square — don\'t let the free hip rotate open.',
+    cues:['Hinge from the hip, not the lower back','Keep hips level — don\'t let the floating side drop','Feel the stretch in the hamstring of the standing leg','Use a wall to touch for balance when learning'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- standing shin --><line x1="76" y1="201" x2="78" y2="155" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/><circle cx="78" cy="155" r="4" fill="#c8a882"/>
+<!-- standing thigh (animates) --><polyline fill="none" stroke="#c8a882" stroke-width="9" stroke-linecap="round"><animate attributeName="points" values="78,155 80,105;78,155 80,105" dur="3.5s" repeatCount="indefinite"/></polyline>
+<!-- hip point --><circle cx="80" cy="105" r="5" fill="#c8a882"/>
+<!-- upper body rotates --><g><animateTransform attributeName="transform" type="rotate" values="0,80,104;-55,80,104;0,80,104" dur="3.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+<line x1="80" y1="104" x2="80" y2="54" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<!-- arm with dumbbell --><line x1="70" y1="68" x2="66" y2="100" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><rect x="58" y="97" width="14" height="6" fill="#7a7a8a" rx="2"/>
+<!-- other arm --><line x1="90" y1="68" x2="92" y2="88" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="80" y1="54" x2="80" y2="42" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="80" cy="28" r="14" fill="#c8a882"/><path d="M67,25 Q80,14 93,25" fill="#3a2010"/></g>
+<!-- floating leg (counter-balance) --><polyline fill="none" stroke="#9a7858" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="80,105 92,130 100,155;80,105 96,108 118,115;80,105 92,130 100,155" dur="3.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">SINGLE-LEG RDL · SIDE VIEW</text></svg>`
+  },
+
+  'dead-bug': {
+    caption: 'Lower back stays pressed flat into the floor throughout',
+    primary:['Core / Abs','Hip Flexors'], secondary:['Spinal Stabilisers'],
+    front:['abs','hip-flexors'], back:['lower-back'],
+    desc:'Lie on your back. Press your lower back firmly into the floor — this position must be maintained throughout. Raise arms vertical, knees bent 90° over hips. Slowly lower opposite arm and leg toward the floor, keeping back flat. Return and repeat the other side. Never let your lower back arch.',
+    cues:['Lower back must stay flat on the floor — always','Move as slowly as possible — 3 seconds down','Breathe out as you extend the arm and leg','Stop at the range where your back stays flat'],
+    svg:`<svg viewBox="0 0 160 130" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="130" fill="#0d0d1a" rx="12"/>
+<!-- floor line --><line x1="10" y1="88" x2="150" y2="88" stroke="#2a2a3a" stroke-width="2"/>
+<!-- body lying down (horizontal) --><line x1="30" y1="75" x2="115" y2="75" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"/>
+<!-- head --><circle cx="22" cy="72" r="12" fill="#c8a882"/><path d="M11,69 Q22,59 33,69" fill="#3a2010"/>
+<!-- right arm up --><polyline fill="none" stroke="#c8a882" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="55,70 52,42 48,22;55,70 52,42 48,22" dur="3.4s" repeatCount="indefinite"/></polyline>
+<!-- left arm lowers --><polyline fill="none" stroke="#9a7858" stroke-width="6" stroke-linecap="round"><animate attributeName="points" values="75,70 78,42 82,22;75,70 90,55 112,50;75,70 78,42 82,22" dur="3.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- right knee up (90°) --><polyline fill="none" stroke="#c8a882" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="95,72 104,50 115,45;95,72 104,50 115,45" dur="3.4s" repeatCount="indefinite"/></polyline>
+<!-- left leg lowers --><polyline fill="none" stroke="#9a7858" stroke-width="6" stroke-linecap="round"><animate attributeName="points" values="108,72 116,55 122,50;108,72 128,72 145,76;108,72 116,55 122,50" dur="3.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- back flat indicator --><line x1="30" y1="80" x2="115" y2="80" stroke="rgba(34,197,94,0.4)" stroke-width="2" stroke-dasharray="4,2"/>
+<text x="80" y="118" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">DEAD BUG · TOP-SIDE VIEW</text></svg>`
+  },
+
+  'plank': {
+    caption: 'One rigid line from ankles to head — brace like you\'re about to be punched',
+    primary:['Core / Abs'], secondary:['Glutes','Spinal Erectors','Shoulders'],
+    front:['abs','chest'], back:['glutes','lower-back','upper-back'],
+    desc:'Forearms on the floor, elbows under shoulders. Toes on the floor. Lift your hips to form one straight line from ankles through hips to head. Brace your core like you\'re about to take a punch. Squeeze your glutes. The position itself should feel difficult — if it doesn\'t, you\'re not bracing hard enough.',
+    cues:['Elbows directly under shoulders','Squeeze glutes as hard as possible','Don\'t let hips sag or pike up','Brace the core like a punch is coming'],
+    svg:`<svg viewBox="0 0 160 130" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="130" fill="#0d0d1a" rx="12"/>
+<line x1="10" y1="95" x2="150" y2="95" stroke="#2a2a3a" stroke-width="2"/>
+<!-- forearms on floor --><line x1="28" y1="93" x2="52" y2="80" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/><circle cx="28" cy="93" r="4" fill="#c8a882"/>
+<!-- body as straight line --><line x1="52" y1="80" x2="128" y2="72" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"/>
+<!-- toes --><line x1="128" y1="72" x2="140" y2="93" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><circle cx="140" cy="93" r="4" fill="#c8a882"/>
+<!-- head --><circle cx="42" cy="68" r="12" fill="#c8a882"/><path d="M31,65 Q42,55 53,65" fill="#3a2010"/>
+<!-- alignment indicator --><line x1="42" y1="68" x2="140" y2="88" stroke="rgba(34,197,94,0.35)" stroke-width="1.5" stroke-dasharray="5,3"/>
+<!-- brace indicator pulse --><rect x="75" y="70" width="26" height="10" rx="3" fill="rgba(239,68,68,0)" stroke="rgba(239,68,68,0.6)" stroke-width="1"><animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/></rect>
+<text x="80" y="118" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">PLANK · SIDE VIEW</text></svg>`
+  },
+
+  'pallof-press': {
+    caption: 'Resist the cable pulling you sideways — that\'s the whole exercise',
+    primary:['Core / Abs','Obliques'], secondary:['Chest','Glutes'],
+    front:['abs','chest'], back:['glutes','lower-back'],
+    desc:'Stand side-on to a cable machine (or band anchor), feet shoulder-width. Hold the handle at your chest. Press the cable straight out in front of you, resisting the rotational pull. Hold 1–2 seconds extended, then return to chest. The cable wants to rotate you — don\'t let it.',
+    cues:['Stand tall, slight bend in knees, braced core','Press directly forward — not toward the machine','Hold the extended position and resist the pull','Both sides equally — this exposes rotational weaknesses'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- cable machine post --><rect x="125" y="60" width="14" height="145" fill="#2a2a3a" rx="3"/><circle cx="132" cy="95" r="6" fill="#555"/>
+<!-- cable line --><line x1="132" y1="95" stroke="#888" stroke-width="1.5"><animate attributeName="x2" values="80;55;80" dur="2.8s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/><animate attributeName="y2" values="95;95;95" dur="2.8s" repeatCount="indefinite"/></line>
+<!-- figure legs --><line x1="72" y1="200" x2="74" y2="155" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/><line x1="74" y1="155" x2="78" y2="105" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/>
+<line x1="88" y1="200" x2="86" y2="155" stroke="#9a7858" stroke-width="7" stroke-linecap="round"/><line x1="86" y1="155" x2="78" y2="105" stroke="#9a7858" stroke-width="8" stroke-linecap="round"/>
+<!-- torso --><line x1="78" y1="105" x2="78" y2="55" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<!-- arms pressing --><polyline fill="none" stroke="#c8a882" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="78,75 78,90;78,75 55,90;78,75 78,90" dur="2.8s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- neck + head --><line x1="78" y1="55" x2="78" y2="43" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="78" cy="29" r="14" fill="#c8a882"/><path d="M65,26 Q78,15 91,26" fill="#3a2010"/>
+<!-- resist arrow --><line x1="90" y1="88" x2="118" y2="88" stroke="rgba(239,68,68,0.6)" stroke-width="1.5" stroke-dasharray="3,2" opacity="0"><animate attributeName="opacity" values="0;0;0.8;0.8;0" keyTimes="0;0.4;0.5;0.7;0.8" dur="2.8s" repeatCount="indefinite"/></line>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">PALLOF PRESS · FRONT VIEW</text></svg>`
+  },
+
+  'copenhagen-plank': {
+    caption: 'Top leg drives the work — squeeze the adductor hard',
+    primary:['Adductors','Obliques'], secondary:['Core','Glutes'],
+    front:['abs','adductors'], back:['glutes','lower-back'],
+    desc:'Lie on your side with your top foot resting on a bench or box. Rest on your forearm below. Lift your hips so your body forms a straight diagonal line. The top leg does the work — squeeze the adductor as you hold. Avoid rotating your hips forward or back.',
+    cues:['Top leg drives you up — feel the inner thigh working','Keep hips stacked — don\'t rotate forward','One straight line from head to feet','Build up: start with 10 sec and progress to 30'],
+    svg:`<svg viewBox="0 0 160 130" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="130" fill="#0d0d1a" rx="12"/>
+<!-- bench for top foot --><rect x="105" y="42" width="45" height="10" fill="#444" rx="3"/>
+<!-- floor --><line x1="10" y1="100" x2="150" y2="100" stroke="#2a2a3a" stroke-width="2"/>
+<!-- forearm on floor --><line x1="24" y1="98" x2="44" y2="82" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><circle cx="24" cy="98" r="4" fill="#c8a882"/>
+<!-- body (angled line) --><line x1="44" y1="82" x2="128" y2="48" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"/>
+<!-- bottom leg resting down --><line x1="128" y1="48" x2="148" y2="98" stroke="#9a7858" stroke-width="7" stroke-linecap="round"/>
+<!-- top leg to bench --><line x1="128" y1="48" x2="148" y2="42" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/>
+<!-- head --><circle cx="34" cy="70" r="12" fill="#c8a882"/><path d="M23,67 Q34,57 45,67" fill="#3a2010"/>
+<!-- adductor highlight --><line x1="128" y1="48" x2="148" y2="50" stroke="rgba(239,68,68,0.5)" stroke-width="10" stroke-linecap="round"><animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite"/></line>
+<text x="80" y="118" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">COPENHAGEN PLANK · SIDE VIEW</text></svg>`
+  },
+
+  'eccentric-calf': {
+    caption: 'The slow lowering phase is the whole point — take 3–5 seconds down',
+    primary:['Calves (Gastrocnemius)'], secondary:['Achilles Tendon','Soleus'],
+    front:['calves'], back:['calves'],
+    desc:'Stand with the ball of your foot on the edge of a step, both feet. Rise up onto both feet, then shift to one foot and lower that heel slowly for 3–5 seconds until it is below the step level. Rise up again with two feet. The two-up, one-down method lets you do more load than you could single-leg alone.',
+    cues:['Rise with two feet — lower with one (slow!)', '3 to 5 full seconds on the lowering phase','Full range: heel drops below step level at bottom','Let the heel touch the step between reps'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/>
+<!-- step/box --><rect x="50" y="168" width="60" height="38" fill="#2e3a2e" stroke="#3a4a3a" stroke-width="1.5" rx="3"/>
+<!-- floor below step --><line x1="15" y1="206" x2="145" y2="206" stroke="#2a2a3a" stroke-width="2"/>
+<!-- legs static standing on step --><line x1="75" y1="168" x2="76" y2="128" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/>
+<line x1="88" y1="168" x2="87" y2="128" stroke="#9a7858" stroke-width="7" stroke-linecap="round"/>
+<!-- torso + upper body --><line x1="80" y1="128" x2="80" y2="78" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<line x1="80" y1="92" x2="60" y2="100" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="80" y1="92" x2="100" y2="100" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<!-- hands on wall for balance --><line x1="60" y1="100" x2="28" y2="95" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/><line x1="100" y1="100" x2="130" y2="95" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/>
+<line x1="80" y1="78" x2="80" y2="66" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="80" cy="52" r="14" fill="#c8a882"/><path d="M67,49 Q80,38 93,49" fill="#3a2010"/>
+<!-- heel animates up and down --><g><animate attributeName="opacity" values="1" dur="4s" repeatCount="indefinite"/>
+<!-- heel line animates (right foot shown) -->
+<line x1="88" y1="168" stroke="#c8a882" stroke-width="5" stroke-linecap="round"><animate attributeName="y2" values="168;155;185;168" keyTimes="0;0.2;0.65;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.1 0 0.3 1;0.4 0 0.2 1"/><animate attributeName="x2" values="88;88;88;88" dur="4s" repeatCount="indefinite"/></line>
+</g>
+<!-- arrow showing direction --><line x1="110" y1="155" x2="110" y2="188" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.7"/>
+<polyline points="106,183 110,190 114,183" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">ECCENTRIC CALF RAISE</text></svg>`
+  },
+
+  'tibialis-raise': {
+    caption: 'Lift the toes as high as possible — feel the shin muscle working',
+    primary:['Tibialis Anterior'], secondary:['Ankle Stabilisers'],
+    front:['calves'], back:[],
+    desc:'Stand with your back flat against a wall, heels about 30cm from the wall. Keeping your heels on the floor, lift the balls of both feet as high as you can. Hold at the top for a moment, then lower slowly. Increase reps to 25–30 before adding weight (a weight plate on the toe box).',
+    cues:['Heels stay on the floor throughout','Lift toes as high as possible — feel the shin contract','Lower slowly and with control','Progress to holding a weight plate on your toe box'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- wall --><rect x="108" y="40" width="12" height="170" fill="#1e1e2e" rx="2"/>
+<!-- body leaning on wall --><line x1="78" y1="200" x2="80" y2="155" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/>
+<line x1="80" y1="155" x2="82" y2="110" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/>
+<line x1="82" y1="110" x2="108" y2="78" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<line x1="108" y1="90" x2="118" y2="112" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="108" y1="78" x2="108" y2="66" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/>
+<circle cx="108" cy="52" r="14" fill="#c8a882"/><path d="M95,49 Q108,38 121,49" fill="#3a2010"/>
+<!-- heel stays, toe lifts --><ellipse cx="65" cy="202" rx="16" ry="4" fill="#333"/>
+<polyline fill="none" stroke="#c8a882" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="78,200 63,200;78,200 58,192;78,200 63,200" dur="2.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- tibialis highlight --><rect x="75" y="160" width="9" height="36" rx="3" fill="rgba(239,68,68,0.5)"><animate attributeName="opacity" values="0.2;0.8;0.2" dur="2.5s" repeatCount="indefinite"/></rect>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">TIBIALIS RAISE · SIDE VIEW</text></svg>`
+  },
+
+  'leg-press': {
+    caption: 'Push through the whole foot — don\'t let knees cave inward',
+    primary:['Quadriceps','Glutes'], secondary:['Hamstrings'],
+    front:['quads'], back:['glutes','hamstrings'],
+    desc:'Sit in the leg press machine with your back flat against the pad. Place feet hip-width on the platform. Lower the platform until knees are at 90° or just past, then drive through your whole foot to press the weight back up. Never lock out your knees at the top — keep a small bend.',
+    cues:['Feet hip-width, middle of platform','Push through the heels and mid-foot — not toes','Never lock the knees out at the top','Control the lowering — 2–3 seconds down'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/>
+<!-- machine frame (simplified) --><rect x="10" y="85" width="15" height="130" fill="#1e1e2e" rx="3"/><rect x="10" y="85" width="130" height="18" fill="#1e1e2e" rx="3"/>
+<!-- seat back --><rect x="18" y="103" width="38" height="65" fill="#252535" rx="4"/>
+<!-- platform/foot plate --><rect x="115" y="80" width="35" height="28" fill="#252535" rx="4" stroke="#2a2a3a" stroke-width="1"/>
+<!-- person seated --><line x1="45" y1="168" x2="45" y2="130" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/>
+<line x1="45" y1="140" x2="55" y2="112" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<line x1="55" y1="118" x2="48" y2="108" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="55" y1="118" x2="62" y2="108" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="55" y1="112" x2="55" y2="100" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="55" cy="86" r="14" fill="#c8a882"/><path d="M42,83 Q55,72 68,83" fill="#3a2010"/>
+<!-- thigh animates --><polyline fill="none" stroke="#c8a882" stroke-width="9" stroke-linecap="round"><animate attributeName="points" values="45,130 92,115;45,130 115,100;45,130 92,115" dur="3.2s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- shin animates --><polyline fill="none" stroke="#c8a882" stroke-width="8" stroke-linecap="round"><animate attributeName="points" values="92,115 128,95;115,100 130,92;92,115 128,95" dur="3.2s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">LEG PRESS · SIDE VIEW</text></svg>`
+  },
+
+  'hip-abduction': {
+    caption: 'Drive the leg straight out to the side — not forward or back',
+    primary:['Glute Medius'], secondary:['Glute Minimus','TFL'],
+    front:[], back:['glutes'],
+    desc:'Stand at a cable machine with an ankle cuff on the outside leg. Stand side-on to the machine. Keeping your body upright and still, drive your outer leg directly out to the side as far as you comfortably can. Control the return. The standing leg and torso should not move — isolate the glute med.',
+    cues:['Keep your torso absolutely still — no lean','Drive the leg directly sideways, not forward','Control the return — don\'t let the cable snap it back','Slight bend in the standing knee for balance'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- cable machine --><rect x="10" y="60" width="14" height="150" fill="#1e1e2e" rx="3"/><circle cx="17" cy="130" r="5" fill="#555"/>
+<line x1="17" y1="130" x2="62" y2="158" stroke="#888" stroke-width="1.5"/>
+<!-- standing leg --><line x1="80" y1="200" x2="80" y2="155" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/>
+<line x1="80" y1="155" x2="80" y2="108" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/>
+<!-- abducting leg animates out to the left --><polyline fill="none" stroke="#9a7858" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="80,108 78,155 78,200;80,108 62,155 55,185;80,108 78,155 78,200" dur="2.8s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- torso + head (static) --><line x1="80" y1="108" x2="80" y2="58" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<line x1="80" y1="72" x2="95" y2="88" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="80" y1="72" x2="65" y2="88" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="80" y1="58" x2="80" y2="46" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="80" cy="32" r="14" fill="#c8a882"/><path d="M67,29 Q80,18 93,29" fill="#3a2010"/>
+<!-- glute highlight on abducting side --><ellipse cx="75" cy="118" rx="10" ry="8" fill="rgba(239,68,68,0.45)"><animate attributeName="opacity" values="0.2;0.8;0.2" dur="2.8s" repeatCount="indefinite"/></ellipse>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">HIP ABDUCTION · FRONT VIEW</text></svg>`
+  },
+
+  'seated-row': {
+    caption: 'Drive your elbows back — squeeze the shoulder blades together',
+    primary:['Upper Back','Lats'], secondary:['Biceps','Rear Deltoids'],
+    front:[], back:['upper-back','lower-back'],
+    desc:'Sit at a cable row machine with feet on the platform, knees slightly bent. Sit upright — don\'t lean back. Grab the handle, then pull it to your lower sternum/upper abs by driving your elbows back as far as they go. Squeeze your shoulder blades hard together at the end. Control the return over 2–3 seconds.',
+    cues:['Sit tall — don\'t use momentum to lean back','Drive elbows back past your body','Squeeze shoulder blades together at the end point','Return slowly — feel the stretch through the back'],
+    svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/>
+<!-- cable machine --><rect x="122" y="55" width="25" height="155" fill="#1e1e2e" rx="3"/><circle cx="132" cy="112" r="6" fill="#555"/>
+<!-- floor --><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- foot platform --><rect x="28" y="192" width="55" height="8" fill="#2e2e3e" rx="2"/>
+<!-- legs on platform --><line x1="44" y1="200" x2="50" y2="170" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/>
+<line x1="64" y1="200" x2="60" y2="170" stroke="#9a7858" stroke-width="7" stroke-linecap="round"/>
+<!-- torso (upright) --><line x1="55" y1="170" x2="58" y2="112" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<!-- arms pull cable --><polyline fill="none" stroke="#c8a882" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="58,120 88,112 120,112;58,120 80,120 90,120;58,120 88,112 120,112" dur="2.8s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- cable --><line x1="132" y1="112" stroke="#888" stroke-width="1.5"><animate attributeName="x2" values="120;90;120" dur="2.8s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/><animate attributeName="y2" values="112;120;112" dur="2.8s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>
+<!-- neck + head --><line x1="58" y1="112" x2="58" y2="100" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="58" cy="86" r="14" fill="#c8a882"/><path d="M45,83 Q58,72 71,83" fill="#3a2010"/>
+<!-- back squeeze highlight --><rect x="52" y="118" width="14" height="22" rx="3" fill="rgba(239,68,68,0.4)"><animate attributeName="opacity" values="0;0;0.7;0.7;0" keyTimes="0;0.35;0.5;0.65;0.75" dur="2.8s" repeatCount="indefinite"/></rect>
+<text x="80" y="216" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">SEATED CABLE ROW · SIDE VIEW</text></svg>`
+  },
+
+  'hollow-body': {
+    caption: 'The whole body creates tension — nothing relaxes',
+    primary:['Core / Abs'], secondary:['Hip Flexors','Lats'],
+    front:['abs','hip-flexors'], back:['lower-back'],
+    desc:'Lie on your back. Press your lower back into the floor. Raise your arms overhead, lift your shoulders off the ground, and raise your legs to about 30–45°. Your body forms a hollow curved shape like a banana. Every muscle should be under tension — core braced, arms reaching, legs pressing together.',
+    cues:['Lower back must stay flat on the floor','Legs higher = easier, lower = harder — find your edge','Arms reach long past your ears','Squeeze legs together and point toes'],
+    svg:`<svg viewBox="0 0 160 130" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="130" fill="#0d0d1a" rx="12"/>
+<line x1="10" y1="88" x2="150" y2="88" stroke="#2a2a3a" stroke-width="2"/>
+<!-- body (curved hollow shape) --><path d="M25,78 Q75,72 135,55" fill="none" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"/>
+<!-- head lifted --><circle cx="20" cy="66" r="12" fill="#c8a882"/><path d="M9,63 Q20,53 31,63" fill="#3a2010"/>
+<!-- arms reaching overhead --><line x1="25" y1="74" x2="8" y2="55" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="8" y1="55" x2="5" y2="42" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/>
+<!-- legs raised --><line x1="120" y1="60" x2="140" y2="42" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/><line x1="128" y1="60" x2="148" y2="44" stroke="#9a7858" stroke-width="7" stroke-linecap="round"/>
+<!-- tension indicator on core --><rect x="55" y="70" width="40" height="10" rx="3" fill="rgba(239,68,68,0)" stroke="rgba(239,68,68,0.5)" stroke-width="1"><animate attributeName="opacity" values="0.4;1;0.4" dur="2.2s" repeatCount="indefinite"/></rect>
+<!-- breathing indicator --><text x="75" y="68" fill="rgba(239,68,68,0.7)" font-size="6" text-anchor="middle" font-family="-apple-system,sans-serif"><animate attributeName="opacity" values="0;1;0" dur="2.2s" repeatCount="indefinite"/>brace</text>
+<text x="80" y="118" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">HOLLOW BODY HOLD</text></svg>`
+  },
+
+  'bicycle-crunches': {
+    caption: 'Slow it down — twist your whole torso, not just your elbow',
+    primary:['Obliques','Rectus Abdominis'], secondary:['Hip Flexors'],
+    front:['abs','hip-flexors'], back:[],
+    desc:'Lie on your back, hands lightly behind your head (don\'t pull on the neck). Lift both legs to tabletop (90°). Bring one knee toward your chest as you rotate your opposite shoulder toward that knee — using your whole torso, not just your elbow. Alternate sides slowly and with full range of rotation.',
+    cues:['Rotate the whole torso — not just the elbow','Move slowly — 2 seconds per side','Don\'t pull your head forward with your hands','Keep the lower back pressed to the floor'],
+    svg:`<svg viewBox="0 0 160 130" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="130" fill="#0d0d1a" rx="12"/>
+<line x1="10" y1="90" x2="150" y2="90" stroke="#2a2a3a" stroke-width="2"/>
+<!-- body base --><line x1="35" y1="80" x2="100" y2="80" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"/>
+<!-- head rotated --><circle cx="26" cy="72" r="12" fill="#c8a882"/><path d="M15,69 Q26,59 37,69" fill="#3a2010"/>
+<!-- arm behind head (right) --><line x1="30" y1="76" x2="22" y2="65" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/>
+<!-- left elbow drives toward right knee --><polyline fill="none" stroke="#c8a882" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="30,76 18,64 12,54;30,76 38,62 48,52;30,76 18,64 12,54" dur="2.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- right leg (knee drives in) --><polyline fill="none" stroke="#c8a882" stroke-width="7" stroke-linecap="round"><animate attributeName="points" values="88,78 108,58 122,42;88,78 100,68 108,56;88,78 108,58 122,42" dur="2.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<!-- left leg (extends out) --><polyline fill="none" stroke="#9a7858" stroke-width="6" stroke-linecap="round"><animate attributeName="points" values="75,80 88,62 95,48;75,80 100,70 118,60;75,80 88,62 95,48" dur="2.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.45;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></polyline>
+<text x="80" y="118" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">BICYCLE CRUNCHES</text></svg>`
+  },
+
+  'russian-twist': {
+    caption: 'Rotate the plate to each side — feel the obliques working',
+    primary:['Obliques'], secondary:['Rectus Abdominis','Hip Flexors'],
+    front:['abs','hip-flexors'], back:[],
+    desc:'Sit with knees bent, feet together. Lean back to a 45° angle so your core is under tension. Hold a weight plate or medicine ball with both hands. Rotate your torso from side to side, bringing the weight to each hip. For more challenge, lift your feet off the floor.',
+    cues:['Lean back to 45° — hold that angle throughout','Rotate from the torso, not just the arms','Keep the weight close to your body','Add feet elevated for extra core challenge'],
+    svg:`<svg viewBox="0 0 160 130" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="130" fill="#0d0d1a" rx="12"/>
+<line x1="10" y1="95" x2="150" y2="95" stroke="#2a2a3a" stroke-width="2"/>
+<!-- lower back/hips on floor --><circle cx="80" cy="92" r="6" fill="#4a5a6a"/>
+<!-- legs bent, slightly elevated --><polyline fill="none" stroke="#c8a882" stroke-width="8" stroke-linecap="round" points="80,92 60,80 42,88"/><polyline fill="none" stroke="#9a7858" stroke-width="7" stroke-linecap="round" points="80,92 100,80 118,88"/>
+<!-- torso leans back 45° (rotates left and right) --><g><animateTransform attributeName="transform" type="rotate" values="0,80,90;-18,80,90;18,80,90;0,80,90" keyTimes="0;0.3;0.7;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1"/>
+<line x1="80" y1="90" x2="72" y2="50" stroke="#3a4a5a" stroke-width="20" stroke-linecap="round"/>
+<!-- arms with weight plate --><line x1="72" y1="62" x2="58" y2="66" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/>
+<line x1="58" y1="66" x2="48" y2="72" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/>
+<circle cx="44" cy="74" r="8" fill="none" stroke="#7a7a8a" stroke-width="3"/>
+<!-- head --><line x1="72" y1="50" x2="70" y2="40" stroke="#c8a882" stroke-width="9" stroke-linecap="round"/><circle cx="68" cy="27" r="13" fill="#c8a882"/><path d="M56,24 Q68,14 80,24" fill="#3a2010"/></g>
+<text x="80" y="118" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">RUSSIAN TWIST</text></svg>`
+  },
+
+  'hollow-body-hold': {
+    caption: 'The whole body creates tension — nothing relaxes',
+    primary:['Core / Abs'], secondary:['Hip Flexors','Lats'],
+    front:['abs','hip-flexors'], back:['lower-back'],
+    desc:'Lie on your back. Press your lower back into the floor. Raise your arms overhead, lift your shoulders off the ground, and raise your legs to about 30–45°. Every muscle should be under tension — core braced, arms reaching, legs pressing together.',
+    cues:['Lower back must stay flat on the floor','Arms reach long past your ears','Squeeze legs together and point toes','Breathe shallowly — don\'t let the position collapse'],
+    svg:`<svg viewBox="0 0 160 130" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="130" fill="#0d0d1a" rx="12"/><line x1="10" y1="88" x2="150" y2="88" stroke="#2a2a3a" stroke-width="2"/><path d="M25,78 Q75,72 135,55" fill="none" stroke="#3a4a5a" stroke-width="18" stroke-linecap="round"/><circle cx="20" cy="66" r="12" fill="#c8a882"/><path d="M9,63 Q20,53 31,63" fill="#3a2010"/><line x1="25" y1="74" x2="8" y2="55" stroke="#c8a882" stroke-width="7" stroke-linecap="round"/><line x1="8" y1="55" x2="5" y2="42" stroke="#c8a882" stroke-width="6" stroke-linecap="round"/><line x1="120" y1="60" x2="140" y2="42" stroke="#c8a882" stroke-width="8" stroke-linecap="round"/><line x1="128" y1="60" x2="148" y2="44" stroke="#9a7858" stroke-width="7" stroke-linecap="round"/><rect x="55" y="70" width="40" height="10" rx="3" fill="none" stroke="rgba(239,68,68,0.5)" stroke-width="1"><animate attributeName="opacity" values="0.4;1;0.4" dur="2.2s" repeatCount="indefinite"/></rect><text x="80" y="118" text-anchor="middle" fill="#3a3a4a" font-size="7.5" font-family="-apple-system,sans-serif" font-weight="600">HOLLOW BODY HOLD</text></svg>`
+  },
+};
+// alias
+DEMO_DATA['bicycle-crunches'] = DEMO_DATA['bicycle-crunches'] || DEMO_DATA['russian-twist'];
+DEMO_DATA['glute-bridge-act'] = { caption:'Bodyweight activation — squeeze glutes hard at the top', primary:['Glutes'], secondary:['Hamstrings','Core'], front:[], back:['glutes','hamstrings'], desc:'Lie on your back, knees bent, feet flat. Drive your hips up by squeezing your glutes hard. Hold for 1–2 seconds at the top, lower with control.', cues:['Squeeze glutes hard at the top','Hold 1-2 seconds before lowering','Don\'t use lower back to lift — glutes only','Progress to single-leg or add a band'], svg:DEMO_DATA['hip-thrust']?DEMO_DATA['hip-thrust'].svg:'' };
+
+// =============================================
+// DEMO MODAL — FUNCTIONS
+// =============================================
+// =============================================
+// DEMO DATA — NEW PLYOMETRICS
+// =============================================
+DEMO_DATA['depth-drops'] = {
+  name: 'Depth Drops',
+  caption: 'Step off — land as quietly as possible. No rebound.',
+  front: ['quads','hip-flexors'], back: ['glutes','hamstrings'],
+  primary: ['Quads', 'Glutes', 'Hamstrings'],
+  secondary: ['Calves', 'Core', 'Peroneals'],
+  desc: 'Stand on the edge of a box 20–30 cm high. Step off (don\'t jump) and land on both feet — or one foot for advanced — with soft bent knees. The goal is the quietest possible landing. Hold for 1–2 seconds. No rebound. This trains the landing mechanics that prevent ACL tears and knee pain.',
+  cues: [
+    'Step off — don\'t jump or push off the box',
+    'Land toe-to-heel, soft knees bent to ~90°',
+    'Knees track over toes — no inward collapse',
+    'Aim for total silence on landing',
+    'Hold the landing still for 1–2 sec before standing up',
+  ],
+  svg: `<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/>
+<!-- Box -->
+<rect x="95" y="150" width="50" height="45" fill="#2a2a3a" rx="4"/>
+<rect x="95" y="148" width="50" height="7" fill="#3a3a5a" rx="2"/>
+<!-- Phase 1: standing on box -->
+<g><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.3;0.4;0.9;1" dur="3.5s" repeatCount="indefinite"/>
+<circle cx="120" cy="60" r="9" fill="#e0e0e0"/>
+<line x1="120" y1="69" x2="120" y2="105" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/>
+<line x1="120" y1="80" x2="104" y2="95" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="120" y1="80" x2="136" y2="95" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="120" y1="105" x2="112" y2="140" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/>
+<line x1="120" y1="105" x2="128" y2="140" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/>
+<line x1="112" y1="140" x2="109" y2="155" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/>
+<line x1="128" y1="140" x2="131" y2="155" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/>
+<text x="120" y="185" text-anchor="middle" fill="#3a5a6a" font-size="7.5" font-family="-apple-system,sans-serif">STEP OFF</text></g>
+<!-- Phase 2: soft landing on ground -->
+<g><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.35;0.5;0.85;0.92;1" dur="3.5s" repeatCount="indefinite"/>
+<circle cx="55" cy="100" r="9" fill="#e0e0e0"/>
+<line x1="55" y1="109" x2="55" y2="140" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/>
+<line x1="55" y1="120" x2="38" y2="132" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="55" y1="120" x2="70" y2="132" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/>
+<!-- deep knee bend landing -->
+<line x1="55" y1="140" x2="38" y2="175" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/>
+<line x1="55" y1="140" x2="72" y2="175" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/>
+<line x1="38" y1="175" x2="30" y2="205" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/>
+<line x1="72" y1="175" x2="80" y2="205" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/>
+<!-- ground line -->
+<line x1="10" y1="205" x2="150" y2="205" stroke="#2a2a3a" stroke-width="2"/>
+<!-- quiet landing indicator -->
+<text x="55" y="215" text-anchor="middle" fill="#22c55e" font-size="7" font-family="-apple-system,sans-serif" font-weight="700">LAND QUIET · HOLD</text>
+<!-- arrival arc -->
+<path d="M118,155 Q90,160 58,108" fill="none" stroke="#5b9cf6" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/></g>
+<text x="80" y="14" text-anchor="middle" fill="#444" font-size="8" font-family="-apple-system,sans-serif" font-weight="600">DEPTH DROP</text></svg>`
+};
+
+DEMO_DATA['broad-jumps'] = {
+  name: 'Broad Jumps',
+  caption: 'Drive low and long — maximum horizontal distance',
+  front: ['quads','hip-flexors'], back: ['glutes','hamstrings','calves-back'],
+  primary: ['Glutes', 'Quads', 'Hamstrings'],
+  secondary: ['Calves', 'Hip Flexors', 'Core'],
+  desc: 'Stand with feet shoulder-width. Swing your arms back and drop into a quarter squat, then explosively drive forward projecting your body as far horizontally as possible. Land softly on both feet with bent knees, absorbing through your hips and ankles.',
+  cues: [
+    'Swing arms back then forward aggressively to generate momentum',
+    'Drive at roughly 45° — not straight up, not flat',
+    'Land toe-to-heel with soft knees — aim for a silent landing',
+    'Full reset between reps — quality over speed',
+  ],
+  svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="10" y1="205" x2="150" y2="205" stroke="#2a2a3a" stroke-width="2"/><g><animate attributeName="opacity" values="1;1;0;0;0;1" keyTimes="0;0.2;0.3;0.6;0.9;1" dur="3.2s" repeatCount="indefinite"/><circle cx="35" cy="60" r="9" fill="#e0e0e0"/><line x1="35" y1="69" x2="35" y2="100" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/><line x1="35" y1="78" x2="20" y2="95" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="35" y1="78" x2="50" y2="95" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="35" y1="100" x2="22" y2="130" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="35" y1="100" x2="48" y2="130" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="22" y1="130" x2="18" y2="160" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="48" y1="130" x2="52" y2="160" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><text x="35" y="185" text-anchor="middle" fill="#3a5a3a" font-size="8" font-family="-apple-system,sans-serif">LOAD</text></g><g><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.25;0.35;0.6;0.7;1" dur="3.2s" repeatCount="indefinite"/><circle cx="90" cy="90" r="9" fill="#e0e0e0"/><line x1="90" y1="99" x2="95" y2="128" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/><line x1="92" y1="108" x2="75" y2="100" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="92" y1="108" x2="110" y2="104" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="95" y1="128" x2="80" y2="155" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="95" y1="128" x2="112" y2="152" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="80" y1="155" x2="70" y2="175" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="112" y1="152" x2="120" y2="172" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><path d="M40,170 Q65,120 88,97" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/><text x="90" y="195" text-anchor="middle" fill="#3a5a3a" font-size="8" font-family="-apple-system,sans-serif">FLY</text></g><g><animate attributeName="opacity" values="0;0;0;0;1;1" keyTimes="0;0.5;0.6;0.7;0.8;1" dur="3.2s" repeatCount="indefinite"/><circle cx="130" cy="140" r="9" fill="#e0e0e0"/><line x1="130" y1="149" x2="130" y2="175" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/><line x1="130" y1="158" x2="116" y2="165" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="130" y1="158" x2="144" y2="165" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="130" y1="175" x2="120" y2="205" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="130" y1="175" x2="140" y2="205" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><text x="130" y="213" text-anchor="middle" fill="#3a5a3a" font-size="8" font-family="-apple-system,sans-serif">LAND</text></g><text x="80" y="14" text-anchor="middle" fill="#444" font-size="8" font-family="-apple-system,sans-serif" font-weight="600">BROAD JUMP</text></svg>`
+};
+
+DEMO_DATA['sl-pogo-hops'] = {
+  name: 'Single-Leg Pogo Hops',
+  caption: 'One foot at a time — stiff ankle spring — think of your foot as a pogo stick',
+  front: ['calves'], back: ['calves-back'],
+  primary: ['Calves', 'Achilles Tendon'],
+  secondary: ['Peroneals', 'Tibialis Anterior', 'Core'],
+  desc: 'Stand tall. Bounce continuously on both feet with minimal knee bend — the power comes from your ankles and Achilles, not your legs. Keep ground contact time as short as possible. Stay on the balls of your feet. Think “spring” not “push”.',
+  cues: [
+    'Minimal knee bend — stiffness is the goal',
+    'Short ground contact — bounce off like a hot surface',
+    'Stay tall — no forward lean or hunching',
+    'Rhythm matters more than height',
+  ],
+  svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="20" y1="205" x2="140" y2="205" stroke="#2a2a3a" stroke-width="2"/><circle cx="80" r="10" fill="#e0e0e0"><animate attributeName="cy" values="45;35;45" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/></circle><line x1="80" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"><animate attributeName="y1" values="55;45;55" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/><animate attributeName="y2" values="95;85;95" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/><animate attributeName="x2" values="80;80;80" dur="0.55s" repeatCount="indefinite"/></line><line x1="80" x2="60" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"><animate attributeName="y1" values="65;55;65" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/><animate attributeName="y2" values="85;75;85" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/></line><line x1="80" x2="100" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"><animate attributeName="y1" values="65;55;65" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/><animate attributeName="y2" values="85;75;85" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/></line><line x2="70" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"><animate attributeName="x1" values="80;80;80" dur="0.55s" repeatCount="indefinite"/><animate attributeName="y1" values="95;85;95" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/><animate attributeName="y2" values="170;163;170" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/></line><line x2="90" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"><animate attributeName="x1" values="80;80;80" dur="0.55s" repeatCount="indefinite"/><animate attributeName="y1" values="95;85;95" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/><animate attributeName="y2" values="170;163;170" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/></line><ellipse cx="70" ry="4" rx="8" fill="#5b9cf6" opacity="0.7"><animate attributeName="cy" values="175;168;175" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/></ellipse><ellipse cx="90" ry="4" rx="8" fill="#5b9cf6" opacity="0.7"><animate attributeName="cy" values="175;168;175" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/></ellipse><ellipse cx="80" cy="205" rx="28" ry="4" fill="#22c55e" opacity="0"><animate attributeName="opacity" values="0.5;0;0.5" keyTimes="0;0.5;1" dur="0.55s" repeatCount="indefinite"/></ellipse><text x="80" y="215" text-anchor="middle" fill="#444" font-size="8" font-family="-apple-system,sans-serif" font-weight="600">POGO HOPS</text></svg>`
+};
+
+DEMO_DATA['single-leg-hops'] = {
+  name: 'Single-Leg Hops',
+  caption: 'Hop forward and stick the landing — 1 second hold',
+  front: ['quads','hip-flexors','calves'], back: ['glutes','hamstrings','calves-back'],
+  primary: ['Glutes', 'Quads', 'Calves'],
+  secondary: ['Hamstrings', 'Peroneals', 'Core'],
+  desc: 'Stand on one foot. Hop forward and land back on the same foot, absorbing impact through a soft bent knee. Hold for one full second before the next rep. This mirrors the exact single-leg loading of each running stride.',
+  cues: [
+    'Soft landing — bend the knee to absorb, not collapse inward',
+    'Hold for 1 full second on each landing',
+    'Knee tracks over toes — no valgus (inward collapse)',
+    "Keep hips level — don't let the non-stance hip drop",
+  ],
+  svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="15" y1="205" x2="145" y2="205" stroke="#2a2a3a" stroke-width="2"/><g><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.35;0.45;0.85;1" dur="3s" repeatCount="indefinite"/><circle cx="55" cy="55" r="9" fill="#e0e0e0"/><line x1="55" y1="64" x2="55" y2="100" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/><line x1="55" y1="75" x2="38" y2="90" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="55" y1="75" x2="68" y2="88" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="55" y1="100" x2="45" y2="140" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="45" y1="140" x2="50" y2="175" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="175" x2="40" y2="205" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="55" y1="100" x2="70" y2="135" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="70" y1="135" x2="80" y2="115" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><text x="55" y="215" text-anchor="middle" fill="#3a3a6a" font-size="7.5" font-family="-apple-system,sans-serif">LOAD</text></g><g><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.3;0.45;0.65;0.75;1" dur="3s" repeatCount="indefinite"/><circle cx="95" cy="80" r="9" fill="#e0e0e0"/><line x1="95" y1="89" x2="98" y2="125" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/><line x1="96" y1="100" x2="78" y2="95" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="96" y1="100" x2="114" y2="98" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="98" y1="125" x2="86" y2="155" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="86" y1="155" x2="80" y2="178" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="98" y1="125" x2="115" y2="150" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="115" y1="150" x2="108" y2="130" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><path d="M52,198 Q72,155 93,87" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/></g><g><animate attributeName="opacity" values="0;0;0;0;1;1" keyTimes="0;0.55;0.65;0.75;0.82;1" dur="3s" repeatCount="indefinite"/><circle cx="130" cy="118" r="9" fill="#e0e0e0"/><line x1="130" y1="127" x2="130" y2="160" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/><line x1="130" y1="138" x2="115" y2="148" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="130" y1="138" x2="144" y2="148" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="130" y1="160" x2="122" y2="185" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="122" y1="185" x2="126" y2="205" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="130" y1="160" x2="144" y2="178" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="144" y1="178" x2="150" y2="162" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><text x="130" y="213" text-anchor="middle" fill="#22c55e" font-size="7" font-family="-apple-system,sans-serif" font-weight="700">HOLD 1s</text></g><text x="80" y="14" text-anchor="middle" fill="#444" font-size="8" font-family="-apple-system,sans-serif" font-weight="600">SINGLE-LEG HOP</text></svg>`
+};
+
+DEMO_DATA['lateral-bounds'] = {
+  name: 'Lateral Bounds',
+  caption: 'Push off one foot, land and stick on the other',
+  front: ['quads','adductors','hip-flexors'], back: ['glutes','hamstrings'],
+  primary: ['Glutes (Med & Max)', 'Quads', 'Adductors'],
+  secondary: ['Hamstrings', 'Calves', 'Core'],
+  desc: 'Stand on one foot. Push off explosively sideways and land on the opposite foot, absorbing impact with a soft bent knee. Pause and balance before the next bound. Cover maximum lateral distance each rep. The stick on landing builds the hip stability your legs need for running.',
+  cues: [
+    'Drive the opposite knee up as you push off — like a speed skater',
+    "Land on a single leg with soft knee — don't let it cave inward",
+    'Pause and balance for a beat before the next bound',
+    'Cover distance — push for width, not just height',
+  ],
+  svg:`<svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="220" fill="#0d0d1a" rx="12"/><line x1="10" y1="205" x2="150" y2="205" stroke="#2a2a3a" stroke-width="2"/><g><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.25;0.35;0.85;1" dur="3s" repeatCount="indefinite"/><circle cx="30" cy="65" r="9" fill="#e0e0e0"/><line x1="30" y1="74" x2="30" y2="108" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/><line x1="30" y1="84" x2="14" y2="96" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="30" y1="84" x2="46" y2="90" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="30" y1="108" x2="38" y2="145" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="38" y1="145" x2="44" y2="175" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="44" y1="175" x2="50" y2="205" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="30" y1="108" x2="20" y2="135" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="20" y1="135" x2="12" y2="118" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><text x="30" y="215" text-anchor="middle" fill="#3a3a6a" font-size="7.5" font-family="-apple-system,sans-serif">PUSH</text></g><g><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.2;0.35;0.6;0.7;1" dur="3s" repeatCount="indefinite"/><circle cx="80" cy="85" r="9" fill="#e0e0e0"/><line x1="80" y1="94" x2="82" y2="128" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/><line x1="81" y1="104" x2="62" y2="108" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="81" y1="104" x2="100" y2="100" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="82" y1="128" x2="70" y2="158" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="70" y1="158" x2="65" y2="180" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="82" y1="128" x2="98" y2="150" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="98" y1="150" x2="92" y2="132" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><path d="M46,200 Q60,155 78,92" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.7"/></g><g><animate attributeName="opacity" values="0;0;0;0;1;1" keyTimes="0;0.5;0.6;0.7;0.78;1" dur="3s" repeatCount="indefinite"/><circle cx="130" cy="115" r="9" fill="#e0e0e0"/><line x1="130" y1="124" x2="128" y2="158" stroke="#e0e0e0" stroke-width="5" stroke-linecap="round"/><line x1="129" y1="136" x2="114" y2="145" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="129" y1="136" x2="146" y2="142" stroke="#e0e0e0" stroke-width="3.5" stroke-linecap="round"/><line x1="128" y1="158" x2="120" y2="183" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="120" y1="183" x2="117" y2="205" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><line x1="128" y1="158" x2="142" y2="178" stroke="#e0e0e0" stroke-width="4.5" stroke-linecap="round"/><line x1="142" y1="178" x2="148" y2="162" stroke="#e0e0e0" stroke-width="4" stroke-linecap="round"/><text x="130" y="213" text-anchor="middle" fill="#f97316" font-size="7" font-family="-apple-system,sans-serif" font-weight="700">STICK</text></g><text x="80" y="14" text-anchor="middle" fill="#444" font-size="8" font-family="-apple-system,sans-serif" font-weight="600">LATERAL BOUNDS</text></svg>`
+};
+
+function openDemo(e, exId) {
+  e.stopPropagation();
+  const d = DEMO_DATA[exId];
+  if (!d) return;
+  document.getElementById('demo-title').textContent = d.name || exId.replace(/-/g,' ').replace(/\\b\\w/g,c=>c.toUpperCase());
+  // Animation tab
+  document.getElementById('demo-svg-wrap').innerHTML = d.svg || '<p style="color:#555;text-align:center;padding:20px">Animation coming soon</p>';
+  document.getElementById('demo-caption').textContent = d.caption || '';
+  // Muscles tab
+  document.getElementById('demo-map-wrap').innerHTML = buildMuscleMap(d.front||[], d.back||[]);
+  let mHtml = '';
+  if (d.primary && d.primary.length) {
+    mHtml += '<div class="muscle-section-label">Primary muscles</div><div class="muscle-chips">' + d.primary.map(m=>`<span class="m-chip primary">${m}</span>`).join('') + '</div>';
+  }
+  if (d.secondary && d.secondary.length) {
+    mHtml += '<div class="muscle-section-label">Secondary / stabilisers</div><div class="muscle-chips">' + d.secondary.map(m=>`<span class="m-chip secondary">${m}</span>`).join('') + '</div>';
+  }
+  document.getElementById('demo-muscle-list').innerHTML = mHtml;
+  // How To tab
+  document.getElementById('demo-desc').textContent = d.desc || '';
+  document.getElementById('demo-cues').innerHTML = (d.cues||[]).map(c=>`<div class="demo-cue"><div class="demo-cue-dot"></div><span>${esc(c)}</span></div>`).join('');
+  // Reset to animation tab
+  document.querySelectorAll('.d-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.d-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.d-tab').classList.add('active');
+  document.getElementById('d-anim').classList.add('active');
+  // Open
+  document.getElementById('demo-overlay').classList.add('open');
+  document.getElementById('demo-sheet').classList.add('open');
+}
+
+function closeDemo() {
+  document.getElementById('demo-overlay').classList.remove('open');
+  document.getElementById('demo-sheet').classList.remove('open');
+}
+
+function switchDemoTab(btn, panelId) {
+  document.querySelectorAll('.d-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.d-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+
+// =============================================
+// SUBSTITUTIONS DATA
+// =============================================
+const SUBSTITUTIONS = {
+  'back-squat': {
+    name: 'Back Squat',
+    conditions: {
+      'sore-back': [
+        { name: 'Goblet Squat', meta: '4 × 8 reps · dumbbell or kettlebell at chest', reason: 'Weight at chest keeps torso perfectly upright — zero barbell load through the spine' },
+        { name: 'Leg Press', meta: '4 × 10 reps', reason: 'Identical quad and glute stimulus with a fully supported back' },
+        { name: 'Hack Squat Machine', meta: '4 × 8 reps', reason: 'Machine guides the path and supports the back — no spinal compression' },
+      ],
+      'sore-knees': [
+        { name: 'Leg Press (feet high)', meta: '4 × 10 reps · feet at top of plate', reason: 'Shifts load from knee to hip, easy to control your depth' },
+        { name: 'Box Squat (sit to bench)', meta: '4 × 6 reps', reason: 'Controlled depth — the box stops you at your comfortable range' },
+      ],
+      'tired': [
+        { name: 'Goblet Squat', meta: '3 × 12 reps · moderate weight', reason: 'Same movement pattern, lighter load — better to train well than train heavy when fatigued' },
+      ],
+      'tight-hips': [
+        { name: 'Goblet Squat', meta: '4 × 10 reps', reason: 'The counterweight pulls you into depth — naturally opens up tight hips' },
+        { name: 'Box Squat (to bench)', meta: '4 × 6 reps', reason: 'Work within your current range and build mobility progressively' },
+      ],
+    }
+  },
+  'rdl': {
+    name: 'Romanian Deadlift',
+    conditions: {
+      'sore-back': [
+        { name: 'Leg Curl Machine', meta: '3 × 12 reps · 3 sec eccentric', reason: 'Pure hamstring isolation with zero lower back involvement' },
+        { name: 'Nordic Hamstring Curl', meta: '3 × 5 reps · slow eccentric', reason: 'Most effective hamstring exercise — no lower back load at all' },
+      ],
+      'sore-knees': [
+        { name: 'Leg Curl Machine', meta: '3 × 12 reps', reason: 'Seated hamstring work with no knee compression or range demand' },
+        { name: 'Good Mornings', meta: '3 × 10 reps · light barbell', reason: 'Hip hinge pattern, similar posterior chain load, minimal knee stress' },
+      ],
+      'tired': [
+        { name: 'Leg Curl Machine', meta: '3 × 12 reps · moderate weight', reason: 'Same hamstring stimulus but seated — far less demanding on the whole system' },
+      ],
+      'tight-hips': [
+        { name: 'Leg Curl Machine', meta: '3 × 12 reps', reason: 'No hip hinge range required — great when hips are too stiff to load through range' },
+      ],
+    }
+  },
+  'nordic-curl': {
+    name: 'Nordic Hamstring Curl',
+    conditions: {
+      'sore-back': [
+        { name: 'Leg Curl Machine', meta: '3 × 12 reps · 3 sec eccentric', reason: 'Eccentric hamstring work with no lower back involvement at all' },
+      ],
+      'sore-knees': [
+        { name: 'Lying Leg Curl', meta: '3 × 12 reps · slow tempo', reason: 'Supported position lets you control the knee angle throughout' },
+      ],
+      'tired': [
+        { name: 'Leg Curl Machine', meta: '3 × 10 reps · 3 sec eccentric', reason: 'Lower intensity version — still keep the slow lowering, that\'s the key stimulus' },
+      ],
+      'tight-hips': [
+        { name: 'Lying Leg Curl', meta: '3 × 12 reps', reason: 'Fully supported — no hip mobility required whatsoever' },
+      ],
+    }
+  },
+  'split-squat': {
+    name: 'Bulgarian Split Squat',
+    conditions: {
+      'sore-back': [
+        { name: 'Reverse Lunge', meta: '3 × 10 each leg · dumbbells at sides', reason: 'No rear foot elevation — far less torso demand and easier to stay upright' },
+        { name: 'Step-Up with Knee Drive', meta: '3 × 10 each leg', reason: 'Forward step avoids the torso lean that loads the back on the BSS' },
+      ],
+      'sore-knees': [
+        { name: 'Step-Up (lower box)', meta: '3 × 10 each leg · shorter range', reason: 'Control exactly how far the knee bends — stop at your comfortable depth' },
+        { name: 'Hip Thrust', meta: '3 × 12 reps', reason: 'Single-effort glute power with minimal knee load — keeps the posterior chain working' },
+      ],
+      'tired': [
+        { name: 'Reverse Lunge', meta: '3 × 10 each leg · lighter', reason: 'Similar single-leg demand but easier to balance and control when fatigued' },
+        { name: 'Walking Lunges', meta: '3 × 12 each leg · bodyweight', reason: 'Keeps the pattern without heavy loading when energy is low' },
+      ],
+      'tight-hips': [
+        { name: 'Reverse Lunge', meta: '3 × 10 each leg', reason: 'Much less hip flexor stretch than the elevated rear foot on the BSS' },
+      ],
+    }
+  },
+  'hip-thrust': {
+    name: 'Hip Thrust',
+    conditions: {
+      'sore-back': [
+        { name: 'Glute Bridge (floor)', meta: '3 × 15 reps · barbell or bodyweight', reason: 'Smaller range of motion, less spinal extension — same glute activation' },
+        { name: 'Cable Pull-Through', meta: '3 × 12 reps', reason: 'Standing hip extension — hammers glutes without any bar load on the spine' },
+      ],
+      'sore-knees': [
+        { name: 'Glute Bridge (floor)', meta: '3 × 15 reps', reason: 'Flat on the floor reduces knee angle — less stress on the joint' },
+        { name: 'Standing Cable Kickback', meta: '3 × 15 each leg', reason: 'Glute isolation standing up — zero knee compression at all' },
+      ],
+      'tired': [
+        { name: 'Glute Bridge (bodyweight)', meta: '3 × 20 reps · no weight', reason: 'Same activation pattern with no loading — still maintains the stimulus' },
+      ],
+      'tight-hips': [
+        { name: 'Glute Bridge (floor)', meta: '3 × 15 reps', reason: 'Less hip extension range needed — easier to get a full glute squeeze' },
+      ],
+    }
+  },
+  'eccentric-calf': {
+    name: 'Eccentric Calf Raise',
+    conditions: {
+      'sore-back': [
+        { name: 'Seated Calf Raise', meta: '3 × 15 reps · 3 sec eccentric', reason: 'Seated position completely removes any spinal load' },
+      ],
+      'sore-knees': [
+        { name: 'Seated Calf Raise', meta: '3 × 15 reps · slow lowering', reason: 'Knee stays fixed in a comfortable bent position throughout' },
+      ],
+      'tired': [
+        { name: 'Seated Calf Raise', meta: '3 × 15 reps', reason: 'Same Achilles stimulus when seated — far less total body demand' },
+      ],
+      'tight-hips': [
+        { name: 'Seated Calf Raise', meta: '3 × 15 reps', reason: 'No standing balance required — great when legs and hips are stiff' },
+      ],
+    }
+  },
+  'plank': {
+    name: 'Plank',
+    conditions: {
+      'sore-back': [
+        { name: 'Bird Dog', meta: '3 × 10 each side · slow and controlled', reason: 'Zero spinal compression — same stability demand from a neutral, supported position' },
+        { name: 'Dead Bug', meta: '3 × 10 each side', reason: 'Lying down — anti-extension core training with no load on the spine' },
+      ],
+      'sore-knees': [
+        { name: 'Dead Bug', meta: '3 × 10 each side', reason: 'No knee contact with the floor — same core work lying on your back' },
+      ],
+      'tired': [
+        { name: 'Dead Bug', meta: '3 × 8 each side · slow', reason: 'Slightly less demanding while still fully training anti-extension stability' },
+      ],
+      'tight-hips': [
+        { name: 'Dead Bug', meta: '3 × 10 each side', reason: 'Lying removes any hip flexor load — easier to complete correctly' },
+      ],
+    }
+  },
+  'pallof-press': {
+    name: 'Pallof Press',
+    conditions: {
+      'sore-back': [
+        { name: 'Dead Bug', meta: '3 × 10 each side', reason: 'Anti-extension core work lying down — no spinal compression at all' },
+        { name: 'Bird Dog', meta: '3 × 10 each side', reason: 'Anti-rotation in a supported quadruped position — equally effective, back-safe' },
+      ],
+      'tired': [
+        { name: 'Bird Dog', meta: '3 × 10 each side', reason: 'Lower intensity core stability — great when fatigued and form may suffer on loaded exercises' },
+      ],
+      'sore-knees': [
+        { name: 'Dead Bug', meta: '3 × 10 each side', reason: 'Lying down completely — no knee or standing balance component' },
+      ],
+      'tight-hips': [
+        { name: 'Dead Bug', meta: '3 × 10 each side', reason: 'Lying position removes all hip flexor demand' },
+      ],
+    }
+  },
+  'copenhagen-plank': {
+    name: 'Copenhagen Plank',
+    conditions: {
+      'sore-back': [
+        { name: 'Side Plank', meta: '3 × 30 sec each side', reason: 'Same lateral core demand without the hip adductor stretch that loads the lower back' },
+      ],
+      'sore-knees': [
+        { name: 'Side Plank', meta: '3 × 30 sec each side', reason: 'No knee elevation required — same lateral chain training' },
+        { name: 'Banded Clamshells', meta: '3 × 20 each side', reason: 'Hip work lying down — zero knee stress' },
+      ],
+      'tired': [
+        { name: 'Side Plank', meta: '3 × 20 sec each side', reason: 'Shorter hold, same lateral chain — smarter choice when fatigued' },
+      ],
+      'tight-hips': [
+        { name: 'Banded Clamshells', meta: '3 × 20 each side', reason: 'No extreme hip positions — gentle adductor and abductor work from a neutral angle' },
+      ],
+    }
+  },
+  'jump-squats': {
+    name: 'Jump Squats',
+    conditions: {
+      'sore-knees': [
+        { name: 'Step-Up with Knee Drive (explosive)', meta: '3 × 8 each leg', reason: 'Single-leg power without the landing impact — same explosive stimulus' },
+        { name: 'Pogo Jumps', meta: '3 × 20 · small fast hops on the spot', reason: 'Calf and Achilles reactive work with much less knee compression on landing' },
+      ],
+      'tired': [
+        { name: 'Slow Squat to Stand', meta: '2 × 8 reps · 3 sec down, 1 sec up', reason: 'Keep the movement pattern but remove the explosive CNS demand' },
+      ],
+      'sore-back': [
+        { name: 'Pogo Jumps', meta: '3 × 20 reps · stay on balls of feet', reason: 'Minimal hip range and spinal load — reactive stiffness stimulus without the squat depth' },
+      ],
+      'tight-hips': [
+        { name: 'Pogo Jumps', meta: '3 × 20 reps', reason: 'Barely any hip range required — all the reactive calf benefit, none of the hip demand' },
+      ],
+    }
+  },
+  'box-jumps': {
+    name: 'Box Jumps',
+    conditions: {
+      'sore-knees': [
+        { name: 'Step-Up with Knee Drive (fast)', meta: '3 × 8 each leg · explosive', reason: 'Explosive power development without the landing impact on the knee joint' },
+        { name: 'Broad Jump', meta: '3 × 5 reps · horizontal landing', reason: 'Horizontal power means a softer landing angle — less vertical knee compression' },
+      ],
+      'tired': [
+        { name: 'Jump Squats', meta: '3 × 5 reps · no box', reason: 'Same explosive demand, simpler setup and landing when fatigued' },
+      ],
+      'sore-back': [
+        { name: 'Broad Jump', meta: '3 × 5 reps', reason: 'Horizontal power instead of vertical — less spinal compression on landing' },
+      ],
+      'tight-hips': [
+        { name: 'Jump Squats', meta: '3 × 5 reps', reason: 'More forgiving hip range than getting full height on a box' },
+      ],
+    }
+  },
+  'trap-bar-dl': {
+    name: 'Trap Bar Deadlift',
+    conditions: {
+      'sore-back': [
+        { name: 'Leg Press (heavy)', meta: '4 × 8 reps', reason: 'Massive lower body stimulus with a completely supported spine' },
+        { name: 'Romanian Deadlift (–30% load)', meta: '3 × 10 reps', reason: 'Keep the hip hinge pattern with far less spinal loading than pulling from the floor' },
+      ],
+      'sore-knees': [
+        { name: 'Romanian Deadlift', meta: '4 × 8 reps', reason: 'Hip-dominant pattern greatly reduces knee flexion vs. the trap bar pull' },
+      ],
+      'tired': [
+        { name: 'Romanian Deadlift', meta: '3 × 10 reps · moderate', reason: 'Lower peak force demand — keeps the posterior chain working without the CNS hit of heavy pulls' },
+      ],
+      'tight-hips': [
+        { name: 'Romanian Deadlift', meta: '4 × 8 reps', reason: 'Start from standing — less hip range needed than pulling from the floor' },
+      ],
+    }
+  },
+  'step-up': {
+    name: 'Box Step-Up',
+    conditions: {
+      'sore-knees': [
+        { name: 'Reverse Lunge', meta: '3 × 10 each leg', reason: 'Slightly less knee-over-toe demand — comparable single-leg stimulus' },
+        { name: 'Hip Thrust', meta: '3 × 12 reps', reason: 'Pure hip extension power when knee-dominant movements are uncomfortable' },
+      ],
+      'sore-back': [
+        { name: 'Reverse Lunge', meta: '3 × 10 each leg · dumbbells at sides', reason: 'No elevated surface — easier to stay upright and reduce spinal demand' },
+      ],
+      'tired': [
+        { name: 'Reverse Lunge', meta: '3 × 10 each leg · bodyweight or light', reason: 'Same pattern with less balance challenge when fatigued' },
+      ],
+      'tight-hips': [
+        { name: 'Reverse Lunge', meta: '3 × 10 each leg', reason: 'No full hip drive off a high step — same posterior chain work with less range' },
+      ],
+    }
+  },
+  'sl-rdl': {
+    name: 'Single Leg RDL',
+    conditions: {
+      'sore-back': [
+        { name: 'Leg Curl Machine', meta: '3 × 12 reps · 3 sec eccentric', reason: 'Hamstring work with zero hip hinge or spinal loading' },
+      ],
+      'sore-knees': [
+        { name: 'Romanian Deadlift (bilateral)', meta: '3 × 10 reps', reason: 'Same hip hinge with two feet — no single-leg balance or knee stress' },
+      ],
+      'tired': [
+        { name: 'Romanian Deadlift (bilateral)', meta: '3 × 10 reps', reason: 'Balance is the first thing to go when tired — bilateral keeps the stimulus safely' },
+      ],
+      'tight-hips': [
+        { name: 'Romanian Deadlift (bilateral)', meta: '3 × 10 reps', reason: 'Two-leg stance is much more forgiving when hip mobility is restricted' },
+      ],
+    }
+  },
+  'leg-press': {
+    name: 'Leg Press',
+    conditions: {
+      'sore-knees': [
+        { name: 'Goblet Squat', meta: '3 × 12 reps · light to moderate', reason: 'Move to your comfortable depth — naturally self-limiting on knee stress' },
+      ],
+      'tired': [
+        { name: 'Goblet Squat', meta: '3 × 12 reps · moderate weight', reason: 'Standing version — lower absolute load but keeps the quad stimulus going' },
+      ],
+      'sore-back': [
+        { name: 'Goblet Squat', meta: '3 × 12 reps', reason: 'Upright torso — no machine seatback pressing into the lower back during heavy leg press' },
+      ],
+      'tight-hips': [
+        { name: 'Goblet Squat', meta: '3 × 12 reps', reason: 'Counterweight helps you sit into depth despite hip tightness' },
+      ],
+    }
+  },
+  'hip-abduction': {
+    name: 'Hip Abduction',
+    conditions: {
+      'sore-knees': [
+        { name: 'Side-Lying Hip Abduction', meta: '3 × 20 each side · add band', reason: 'Lying down removes all knee loading from the equation' },
+        { name: 'Banded Clamshells', meta: '3 × 20 each side', reason: 'Glute med isolation lying down — zero knee stress' },
+      ],
+      'tired': [
+        { name: 'Banded Clamshells', meta: '3 × 20 each side', reason: 'Lower intensity, same glute med stimulus — a perfect low-energy finisher' },
+      ],
+      'sore-back': [
+        { name: 'Side-Lying Hip Abduction', meta: '3 × 20 each side', reason: 'Lying removes all spinal loading — no back involvement' },
+        { name: 'Banded Clamshells', meta: '3 × 20 each side', reason: 'Same glute med stimulus completely back-safe' },
+      ],
+      'tight-hips': [
+        { name: 'Banded Clamshells', meta: '3 × 20 each side', reason: 'Fixed hip position — no full hip range of motion needed' },
+      ],
+    }
+  },
+  'seated-row': {
+    name: 'Seated Cable Row',
+    conditions: {
+      'sore-back': [
+        { name: 'Chest-Supported DB Row', meta: '3 × 12 reps · bench at 45°', reason: 'Chest on bench completely removes the lower back stabilisation demand' },
+        { name: 'Face Pulls', meta: '3 × 15 reps · cable', reason: 'Rear delt and upper back with no lower back requirement at all' },
+      ],
+      'tired': [
+        { name: 'Face Pulls', meta: '3 × 15 reps · light-moderate', reason: 'Less demanding on the system — still trains that important posterior shoulder posture' },
+      ],
+      'sore-knees': [
+        { name: 'Single-Arm DB Row', meta: '3 × 12 each arm', reason: 'No specific knee or seated position needed — brace on a bench and go' },
+      ],
+      'tight-hips': [
+        { name: 'Face Pulls', meta: '3 × 15 reps', reason: 'Standing cable work — no hip flexor demand from a tight seated position' },
+      ],
+    }
+  },
+};
+
+// =============================================
+// SWAP MODAL — STATE & FUNCTIONS
+// =============================================
+let swapExId = null, swapDay = null, currentAlts = [];
+
+function openSwap(e, exId, day) {
+  e.stopPropagation();
+  if (!SUBSTITUTIONS[exId]) return;
+  swapExId = exId; swapDay = day;
+  document.getElementById('swap-title').textContent = 'Swap: ' + SUBSTITUTIONS[exId].name;
+  document.querySelectorAll('.feeling-pill').forEach(p => p.classList.remove('active'));
+  document.getElementById('swap-alts').classList.remove('show');
+  document.getElementById('swap-alts-list').innerHTML = '';
+  document.getElementById('swap-overlay').classList.add('open');
+  document.getElementById('swap-sheet').classList.add('open');
+}
+
+function closeSwap() {
+  document.getElementById('swap-overlay').classList.remove('open');
+  document.getElementById('swap-sheet').classList.remove('open');
+  swapExId = null; swapDay = null; currentAlts = [];
+}
+
+function selectCondition(pill, condition) {
+  document.querySelectorAll('.feeling-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  const data = SUBSTITUTIONS[swapExId];
+  if (!data) return;
+  currentAlts = (data.conditions[condition] || []);
+  const list = document.getElementById('swap-alts-list');
+  if (currentAlts.length === 0) {
+    list.innerHTML = '<div class="swap-empty">No specific swap for this — you\'re good to do the original exercise, or try a different condition above.</div>';
+  } else {
+    list.innerHTML = currentAlts.map((alt, i) => `
+      <div class="swap-alt-card">
+        <div class="swap-alt-info">
+          <div class="swap-alt-name">${esc(alt.name)}</div>
+          <div class="swap-alt-meta">${esc(alt.meta)}</div>
+          <div class="swap-alt-reason">${esc(alt.reason)}</div>
+        </div>
+        <button class="swap-in-btn" onclick="applySwap(${i})">Swap In</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('swap-alts').classList.add('show');
+}
+
+function applySwap(altIndex) {
+  const alt = currentAlts[altIndex];
+  if (!alt || !swapExId || !swapDay) return;
+  const state = getState(swapDay);
+  if (!state.swapped) state.swapped = {};
+  state.swapped[swapExId] = { altName: alt.name, altMeta: alt.meta, reason: alt.reason };
+  saveState(swapDay, state);
+  applySwapToCard(swapDay, swapExId, state.swapped[swapExId]);
+  closeSwap();
+}
+
+function applySwapToCard(day, exId, swapInfo) {
+  const card = document.querySelector(`#${day} .exercise-card[data-id="${exId}"]`);
+  if (!card) return;
+  const nameEl = card.querySelector('.exercise-name');
+  const metaEl = card.querySelector('.exercise-meta');
+  // Store originals (only once)
+  if (!card.dataset.origName) card.dataset.origName = nameEl.innerHTML;
+  if (!card.dataset.origMeta) card.dataset.origMeta = metaEl.innerHTML;
+  // Apply swapped appearance
+  card.classList.add('swapped');
+  nameEl.innerHTML = esc(swapInfo.altName) + ' <span class="swap-badge">SWAP</span>';
+  metaEl.innerHTML = esc(swapInfo.altMeta);
+  // Reason tip
+  let tipEl = card.querySelector('.swap-reason-tip');
+  if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'swap-reason-tip'; metaEl.insertAdjacentElement('afterend', tipEl); }
+  tipEl.textContent = '💡 ' + swapInfo.reason;
+  // Restore button
+  let restBtn = card.querySelector('.swap-restore-btn');
+  if (!restBtn) {
+    restBtn = document.createElement('button');
+    restBtn.className = 'swap-restore-btn';
+    restBtn.onclick = (e) => { e.stopPropagation(); restoreSwap(day, exId); };
+    tipEl.insertAdjacentElement('afterend', restBtn);
+  }
+  restBtn.textContent = '↩ Restore original';
+}
+
+function restoreSwap(day, exId) {
+  const card = document.querySelector(`#${day} .exercise-card[data-id="${exId}"]`);
+  if (!card) return;
+  card.classList.remove('swapped');
+  const nameEl = card.querySelector('.exercise-name');
+  const metaEl = card.querySelector('.exercise-meta');
+  if (card.dataset.origName) nameEl.innerHTML = card.dataset.origName;
+  if (card.dataset.origMeta) metaEl.innerHTML = card.dataset.origMeta;
+  card.querySelector('.swap-reason-tip')?.remove();
+  card.querySelector('.swap-restore-btn')?.remove();
+  const state = getState(day);
+  if (state.swapped) { delete state.swapped[exId]; saveState(day, state); }
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
